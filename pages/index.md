@@ -22,6 +22,8 @@ At Auburn I worked under Dr. Xiao Qin and Dr. Orlando Acevedo. Under Dr. Acevedo
 ### Columbia University, Ph.D. Computer Science
 * January 2013 - Present
 * New York, NY
+* Selected Coursework:
+    * [Operating Systems](classes/OperatingSystems.html)
 
 ### Auburn University, B.S. Software Engineering
 * August 2008 - May 2012

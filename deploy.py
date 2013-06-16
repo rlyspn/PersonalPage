@@ -29,8 +29,11 @@ def render_page(src, dest):
 
 
 def get_dst(src):
-    ret = re.sub('^pages', site, src)
-    ret = re.sub('md$', 'html', ret)
+    ret = None
+    if re.search('md$', src):
+        ret = re.sub('md$', 'html', src)
+        if ret != None:
+            ret = re.sub('^pages', site, ret)
     return ret
 
 def walk_pages():
