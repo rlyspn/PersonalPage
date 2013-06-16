@@ -3,8 +3,7 @@
 ## [Mobile and Cloud Security](http://www.cs.columbia.edu/~roxana/teaching/CloudMobileS13/)
 * Implemented a UI driven record and replay system for Android 4.2
 * [Record System Repository](https://bitbucket.org/rlyspn/androidrr)
-* [Replay System Reposiroty]()
-* [Paper]()
+* [Paper](assets/papers/AndroidRR.pdf)
 
 ## COMS W4118: [Operating Systems](http://www.cs.columbia.edu/~krj/os/)
 * Shell Project
