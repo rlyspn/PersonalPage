@@ -1,0 +1,5827 @@
+From 61a3fde1627b7d468eeee79ab19317362f3930dc Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Tue, 9 Apr 2013 17:10:15 -0400
+Subject: [PATCH 01/61] defined system calls
+
+---
+ arch/x86/include/asm/unistd_32.h   |    2 ++
+ arch/x86/kernel/syscall_table_32.S |    2 ++
+ include/linux/syscalls.h           |    4 +++-
+ mm/Makefile                        |    2 +-
+ mm/ssmem.c                         |   16 ++++++++++++++++
+ 5 files changed, 24 insertions(+), 2 deletions(-)
+ create mode 100644 mm/ssmem.c
+
+diff --git a/arch/x86/include/asm/unistd_32.h b/arch/x86/include/asm/unistd_32.h
+index f2bba78..aee0733 100644
+--- a/arch/x86/include/asm/unistd_32.h
++++ b/arch/x86/include/asm/unistd_32.h
+@@ -338,6 +338,8 @@
+ #define __NR_dup3		330
+ #define __NR_pipe2		331
+ #define __NR_inotify_init1	332
++#define __ssmem_attach          333
++#define __ssmem_detach          334
+ 
+ #ifdef __KERNEL__
+ 
+diff --git a/arch/x86/kernel/syscall_table_32.S b/arch/x86/kernel/syscall_table_32.S
+index e2e86a0..4c0d113 100644
+--- a/arch/x86/kernel/syscall_table_32.S
++++ b/arch/x86/kernel/syscall_table_32.S
+@@ -332,3 +332,5 @@ ENTRY(sys_call_table)
+ 	.long sys_dup3			/* 330 */
+ 	.long sys_pipe2
+ 	.long sys_inotify_init1
++	.long ssmem_attach
++	.long ssmem_detach
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index f9f900c..f60be73 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -1,3 +1,4 @@
++
+ /*
+  * syscalls.h - Linux syscall interfaces (non-arch-specific)
+  *
+@@ -691,7 +692,8 @@ asmlinkage long sys_ppoll(struct pollfd __user *, unsigned int,
+ 			  size_t);
+ asmlinkage long sys_pipe2(int __user *, int);
+ asmlinkage long sys_pipe(int __user *);
+-
++asmlinkage void *ssmem_attach(int __user, int __user, size_t __user);
++asmlinkage int ssmem_datch(void * __user);
+ int kernel_execve(const char *filename, char *const argv[], char *const envp[]);
+ 
+ #endif
+diff --git a/mm/Makefile b/mm/Makefile
+index 78f97ff..a546747 100644
+--- a/mm/Makefile
++++ b/mm/Makefile
+@@ -11,7 +11,7 @@ obj-y			:= bootmem.o filemap.o mempool.o oom_kill.o fadvise.o \
+ 			   maccess.o page_alloc.o page-writeback.o pdflush.o \
+ 			   readahead.o swap.o truncate.o vmscan.o shmem.o \
+ 			   prio_tree.o util.o mmzone.o vmstat.o backing-dev.o \
+-			   page_isolation.o mm_init.o $(mmu-y)
++			   page_isolation.o mm_init.o ssmem.o $(mmu-y)
+ 
+ obj-$(CONFIG_PROC_PAGE_MONITOR) += pagewalk.o
+ obj-$(CONFIG_BOUNCE)	+= bounce.o
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+new file mode 100644
+index 0000000..6d871c8
+--- /dev/null
++++ b/mm/ssmem.c
+@@ -0,0 +1,16 @@
++#include <linux/types.h>
++
++#define SSMEM-MAX 1024
++#define SSMEM_FLAG_CREATE 0x1
++#define SSMEM_FLAG_WRITE  0x2
++#define SSMEM_FLAG_EXEC   0x4
++
++void *ssmem_attach (int id, int flags, size_t length) 
++{
++
++}
++
++int ssmem_detach (void *addr)
++{
++  return 0;
++}
+-- 
+1.7.9.5
+
+
+From 820526356a921ea35037a38d5c49b335dc1632fb Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 9 Apr 2013 17:27:12 -0400
+Subject: [PATCH 02/61] -added outline for vm_operations_struct.
+
+---
+ mm/ssmem.c |   41 ++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 38 insertions(+), 3 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 6d871c8..ab4e557 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -1,16 +1,51 @@
++#include <linux/mm.h>
+ #include <linux/types.h>
+ 
+-#define SSMEM-MAX 1024
++#define SSMEM_MAX 1024
+ #define SSMEM_FLAG_CREATE 0x1
+ #define SSMEM_FLAG_WRITE  0x2
+ #define SSMEM_FLAG_EXEC   0x4
+ 
+-void *ssmem_attach (int id, int flags, size_t length) 
++static void ssmem_open(struct vm_area_struct *area)
+ {
++}
++
++static void ssmem_close(struct vm_area_struct *area)
++{
++}
++
++static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
++{
++	return -1;
++}
++
++static int ssmem_page_mkwrite(struct vm_area_struct *area,
++		struct vm_fault vmf)
++{
++	return -1;
++}
++
++static int ssmem_access(struct vm_area_struct *area, unsigned long address,
++		void *buf, int len, int write)
++{
++	return -1;
++}
++
++struct vm_operations_struct ssmem_vm_ops = {
++	.open = ssmem_open,
++	.close = ssmem_close,
++	.fault = ssmem_fault,
++	.page_mkwrite = ssmem_page_mkwrite,
++	.access = ssmem_access,
+ 
++};
++
++void *ssmem_attach(int id, int flags, size_t length)
++{
++	return NULL;
+ }
+ 
+-int ssmem_detach (void *addr)
++int ssmem_detach(void *addr)
+ {
+   return 0;
+ }
+-- 
+1.7.9.5
+
+
+From 52971b2efe41a6c0d85f155067c3324dd1025acb Mon Sep 17 00:00:00 2001
+From: Karan Uppal <ku2138@columbia.edu>
+Date: Tue, 9 Apr 2013 20:47:51 -0400
+Subject: [PATCH 03/61] data struct added
+
+---
+ mm/ssmem.c |   33 ++++++++++++++++++++++++++++++++-
+ 1 file changed, 32 insertions(+), 1 deletion(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 6d871c8..67eb14c 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -1,13 +1,44 @@
+ #include <linux/types.h>
++#include <linux/spinlock.h>
+ 
+-#define SSMEM-MAX 1024
++#define SSMEM_MAX 1024
+ #define SSMEM_FLAG_CREATE 0x1
+ #define SSMEM_FLAG_WRITE  0x2
+ #define SSMEM_FLAG_EXEC   0x4
+ 
++struct ssmem_data {
++
++	int isAllocated; 
++	size_t length;
++	int numOfMappers;
++	struct anon_vma *listOfMappers;
++	struct page *listOfPages;
++	spinlock_t lock; 
++
++};
++
++struct ssmem_data data[SSMEM_MAX];
++
+ void *ssmem_attach (int id, int flags, size_t length) 
+ {
++	//Error Check
++	if(id<0 || id>SSMEM_MAX-1)
++		return (void*)-EINVAL;
++	else if(flags & SSMEM_FLAG_CREATE){ /*Create */
++
++		if(length>0)
++			return (void*)-EINVAL;
++
++
++	}
++	else{/*attach*/
++
++		if(data[id].isAllocated==0) 
++			return (void*)-EADDRNOTAVAIL;
++
++
+ 
++	}
+ }
+ 
+ int ssmem_detach (void *addr)
+-- 
+1.7.9.5
+
+
+From 18268ee5b785d2f2d0789aae8d86d81e0e294dd9 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 9 Apr 2013 21:18:26 -0400
+Subject: [PATCH 04/61] -reorganized for checkpatch and to make it compile.
+
+---
+ mm/ssmem.c |   60 ++++++++++++++++++++++++++++--------------------------------
+ 1 file changed, 28 insertions(+), 32 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 07c17ac..bf065a1 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -7,49 +7,19 @@
+ #define SSMEM_FLAG_WRITE  0x2
+ #define SSMEM_FLAG_EXEC   0x4
+ 
+-struct vm_operations_struct ssmem_vm_ops = {
+-	.open = ssmem_open,
+-	.close = ssmem_close,
+-	.fault = ssmem_fault,
+-	.page_mkwrite = ssmem_page_mkwrite,
+-	.access = ssmem_access,
+-
+-};
+-
+ struct ssmem_data {
+ 
+-	int isAllocated; 
++	int isAllocated;
+ 	size_t length;
+ 	int numOfMappers;
+ 	struct anon_vma *listOfMappers;
+ 	struct page *listOfPages;
+-	spinlock_t lock; 
++	spinlock_t lock;
+ 
+ };
+ 
+ struct ssmem_data data[SSMEM_MAX];
+ 
+-void *ssmem_attach (int id, int flags, size_t length) 
+-{
+-	//Error Check
+-	if(id<0 || id>SSMEM_MAX-1)
+-		return (void*)-EINVAL;
+-	else if(flags & SSMEM_FLAG_CREATE){ /*Create */
+-
+-		if(length>0)
+-			return (void*)-EINVAL;
+-
+-
+-	}
+-	else{/*attach*/
+-
+-		if(data[id].isAllocated==0) 
+-			return (void*)-EADDRNOTAVAIL;
+-
+-
+-
+-	}
+-
+ static void ssmem_open(struct vm_area_struct *area)
+ {
+ }
+@@ -75,6 +45,32 @@ static int ssmem_access(struct vm_area_struct *area, unsigned long address,
+ 	return -1;
+ }
+ 
++void *ssmem_attach(int id, int flags, size_t length)
++{
++	/* Error Check */
++	if (id < 0 || id > SSMEM_MAX-1)
++		return (void *)-EINVAL;
++	else if (flags & SSMEM_FLAG_CREATE) { /*Create */
++		if (length > 0)
++			return (void *) -EINVAL;
++	} else{/*attach*/
++		if (data[id].isAllocated == 0)
++			return (void *) -EADDRNOTAVAIL;
++	}
++
++
++
++}
++
++
++struct vm_operations_struct ssmem_vm_ops = {
++	.open = ssmem_open,
++	.close = ssmem_close,
++	.fault = ssmem_fault,
++	.page_mkwrite = ssmem_page_mkwrite,
++	.access = ssmem_access,
++
++};
+ 
+ /*
+ * Detach
+-- 
+1.7.9.5
+
+
+From 255fc0e9aa25954bf44da8b20db3384eb1894430 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 9 Apr 2013 21:44:09 -0400
+Subject: [PATCH 05/61] -added page calculation functions.
+
+---
+ mm/ssmem.c |   44 ++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 38 insertions(+), 6 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index bf065a1..b3b6318 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -8,20 +8,23 @@
+ #define SSMEM_FLAG_EXEC   0x4
+ 
+ struct ssmem_data {
+-
+ 	int isAllocated;
+ 	size_t length;
+ 	int numOfMappers;
+ 	struct anon_vma *listOfMappers;
+ 	struct page *listOfPages;
+ 	spinlock_t lock;
+-
+ };
+ 
+ struct ssmem_data data[SSMEM_MAX];
+ 
+ static void ssmem_open(struct vm_area_struct *area)
+ {
++	/* 
++	 * I don't know if we need to implement this function.  It is only
++	 * called when copying or splitting a vma.  Do we have anything special
++	 * to do when we copy or split a vma? 
++	 */
+ }
+ 
+ static void ssmem_close(struct vm_area_struct *area)
+@@ -45,6 +48,39 @@ static int ssmem_access(struct vm_area_struct *area, unsigned long address,
+ 	return -1;
+ }
+ 
++/**
++ * Calculates the number of pages required to accomadate memory of size length
++ * bytes.
++ */
++unsigned int pages_from_bytes(size_t length)
++{
++	if (length % PAGE_SIZE == 0)
++		return length / PAGE_SIZE;
++	else
++		return length + PAGE_SIZE + 1;
++}
++
++/**
++ * Returns order on which you should allocate pages.  Basically log base 2 of
++ * the number of pages.
++ */
++unsigned int page_order(unsigned int page_count)
++{
++	unsigned int order = 0;
++	while (page_count > 0) {
++		page_count >> 1;
++		order++;
++	}
++	return order;
++}
++
++void ssmem_create(struct ssmem_data *data, size_t length)
++{
++	/* Calculate the number of pages. */
++	unsigned int page_count = pages_from_bytes(length);
++	unsigned int order = page_order(page_count);
++}
++
+ void *ssmem_attach(int id, int flags, size_t length)
+ {
+ 	/* Error Check */
+@@ -57,9 +93,6 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 		if (data[id].isAllocated == 0)
+ 			return (void *) -EADDRNOTAVAIL;
+ 	}
+-
+-
+-
+ }
+ 
+ 
+@@ -69,7 +102,6 @@ struct vm_operations_struct ssmem_vm_ops = {
+ 	.fault = ssmem_fault,
+ 	.page_mkwrite = ssmem_page_mkwrite,
+ 	.access = ssmem_access,
+-
+ };
+ 
+ /*
+-- 
+1.7.9.5
+
+
+From b68f2db993d384bd8a2cbb8aa80c0e1e1f178dd8 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 9 Apr 2013 21:45:09 -0400
+Subject: [PATCH 06/61] -added page calculation functions.
+
+---
+ mm/ssmem.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index b3b6318..3dd97ae 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -74,7 +74,7 @@ unsigned int page_order(unsigned int page_count)
+ 	return order;
+ }
+ 
+-void ssmem_create(struct ssmem_data *data, size_t length)
++void ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ {
+ 	/* Calculate the number of pages. */
+ 	unsigned int page_count = pages_from_bytes(length);
+@@ -89,6 +89,8 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 	else if (flags & SSMEM_FLAG_CREATE) { /*Create */
+ 		if (length > 0)
+ 			return (void *) -EINVAL;
++		else
++			ssmem_create(&data[i], flags, length);
+ 	} else{/*attach*/
+ 		if (data[id].isAllocated == 0)
+ 			return (void *) -EADDRNOTAVAIL;
+-- 
+1.7.9.5
+
+
+From cbee9b0f9682772f4e6efa279665c12e4a7805f8 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 9 Apr 2013 22:03:51 -0400
+Subject: [PATCH 07/61] -now allocates pages for new ssmem.
+
+---
+ mm/ssmem.c |   37 +++++++++++++++++++++++++++++--------
+ 1 file changed, 29 insertions(+), 8 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 3dd97ae..7121602 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -20,10 +20,10 @@ struct ssmem_data data[SSMEM_MAX];
+ 
+ static void ssmem_open(struct vm_area_struct *area)
+ {
+-	/* 
++	/*
+ 	 * I don't know if we need to implement this function.  It is only
+ 	 * called when copying or splitting a vma.  Do we have anything special
+-	 * to do when we copy or split a vma? 
++	 * to do when we copy or split a vma?
+ 	 */
+ }
+ 
+@@ -68,17 +68,37 @@ unsigned int page_order(unsigned int page_count)
+ {
+ 	unsigned int order = 0;
+ 	while (page_count > 0) {
+-		page_count >> 1;
++		page_count = page_count >> 1;
+ 		order++;
+ 	}
+ 	return order;
+ }
+ 
+-void ssmem_create(struct ssmem_data *data, int flags, size_t length)
++/*
++ * Sets up the ssmem_data struct passed in.  Returns 0 on success or -1
++ * otherwise.
++ */
++unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ {
+-	/* Calculate the number of pages. */
+-	unsigned int page_count = pages_from_bytes(length);
+-	unsigned int order = page_order(page_count);
++	gfp_t gfp_mask;
++	struct page *pages;
++	unsigned int page_count, order;
++
++	/*
++	 * Page should not be reclaimable or movable. It's to be used by the
++	 * user
++	 * TODO = check this.
++	 */
++	gfp_mask = GFP_USER;
++
++	/* Calculate the number of pages and allocate them. */
++	page_count = pages_from_bytes(length);
++	order = page_order(page_count);
++	pages = alloc_pages(gfp_mask, order);
++	if (pages == NULL)
++		return -EINVAL;
++
++	return 0;
+ }
+ 
+ void *ssmem_attach(int id, int flags, size_t length)
+@@ -90,7 +110,8 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 		if (length > 0)
+ 			return (void *) -EINVAL;
+ 		else
+-			ssmem_create(&data[i], flags, length);
++			if (ssmem_create(&data[id], flags, length))
++				return (void *) -EINVAL;
+ 	} else{/*attach*/
+ 		if (data[id].isAllocated == 0)
+ 			return (void *) -EADDRNOTAVAIL;
+-- 
+1.7.9.5
+
+
+From 51033e38558a4a0d24a1b63d89890ba41021e73d Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 9 Apr 2013 22:42:40 -0400
+Subject: [PATCH 08/61] -rewrote logic for error handling.  Before it was not
+ guarnteed to find a valid code branch.
+
+---
+ mm/ssmem.c |   66 ++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 58 insertions(+), 8 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 7121602..dbc8022 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -7,12 +7,22 @@
+ #define SSMEM_FLAG_WRITE  0x2
+ #define SSMEM_FLAG_EXEC   0x4
+ 
++/*
++ * These two fields exists because there would be a race condition when
++ * creating segments for the first time because the locks are not initialized.
++ */
++DEFINE_SPINLOCK(big_ssmem_lock);
++unsigned int locks_init;
++
+ struct ssmem_data {
+ 	int isAllocated;
+ 	size_t length;
++	unsigned int pagecount;
+ 	int numOfMappers;
+ 	struct anon_vma *listOfMappers;
+ 	struct page *listOfPages;
++
++	/* Too bad this can't be statically declared. */
+ 	spinlock_t lock;
+ };
+ 
+@@ -77,6 +87,8 @@ unsigned int page_order(unsigned int page_count)
+ /*
+  * Sets up the ssmem_data struct passed in.  Returns 0 on success or -1
+  * otherwise.
++ *
++ * NOTE: This does not handle vmas and anon_vmas
+  */
+ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ {
+@@ -84,6 +96,9 @@ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ 	struct page *pages;
+ 	unsigned int page_count, order;
+ 
++	if (data->isAllocated)
++		return 0;
++
+ 	/*
+ 	 * Page should not be reclaimable or movable. It's to be used by the
+ 	 * user
+@@ -97,24 +112,59 @@ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ 	pages = alloc_pages(gfp_mask, order);
+ 	if (pages == NULL)
+ 		return -EINVAL;
++	data->listOfPages = pages;
++	data->pagecount = page_count;
++	data->isAllocated = 1;
++
++	return 0;
++}
++
++unsigned int init_locks()
++{
++	int i;
++	if (locks_init)
++		return 0;
++	for (i = 0; i < SSMEM_MAX; i++)
++		spin_lock_init(&data[i].lock);
++	locks_init = 1;
+ 
+ 	return 0;
+ }
+ 
+ void *ssmem_attach(int id, int flags, size_t length)
+ {
++	if (!locks_init) {
++		spin_lock(&big_ssmem_lock);
++		init_locks();
++		spin_unlock(&big_ssmem_lock);
++	}
+ 	/* Error Check */
+ 	if (id < 0 || id > SSMEM_MAX-1)
+ 		return (void *)-EINVAL;
+-	else if (flags & SSMEM_FLAG_CREATE) { /*Create */
+-		if (length > 0)
+-			return (void *) -EINVAL;
+-		else
+-			if (ssmem_create(&data[id], flags, length))
++	else {
++		spin_lock(&data[id].lock);
++		if (flags & SSMEM_FLAG_CREATE) { /*Create */
++			/* Can't allocated less than or equal to 0. */
++			if (length <= 0) {
++				spin_unlock(&data[id].lock);
+ 				return (void *) -EINVAL;
+-	} else{/*attach*/
+-		if (data[id].isAllocated == 0)
+-			return (void *) -EADDRNOTAVAIL;
++			} else {
++				if (ssmem_create(&data[id], flags, length) !=
++						0) {
++					spin_unlock(&data[id].lock);
++					return (void *) -EINVAL;
++				}
++			}
++		} else{
++			/*attach but don't create*/
++			if (data[id].isAllocated == 0) {
++				spin_unlock(&data[id].lock);
++				return (void *) -EADDRNOTAVAIL;
++			} else { /* is allocated */
++				spin_unlock(&data[id].lock);
++				return 0;
++			}
++		}
+ 	}
+ }
+ 
+-- 
+1.7.9.5
+
+
+From ffbed966266db9a9f261e03abb1fa564b606d4fb Mon Sep 17 00:00:00 2001
+From: Karan Uppal <ku2138@columbia.edu>
+Date: Wed, 10 Apr 2013 20:32:47 -0400
+Subject: [PATCH 09/61] page fault handler and lock
+
+---
+ mm/ssmem.c |   61 +++++++++++++++++++++++++++++++++++++++++++-----------------
+ 1 file changed, 44 insertions(+), 17 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index dbc8022..f553f37 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -1,6 +1,8 @@
+ #include <linux/mm.h>
+ #include <linux/types.h>
+ #include <linux/spinlock.h>
++#include <asm/page.h>
++#include <asm/pgtable.h>
+ 
+ #define SSMEM_MAX 1024
+ #define SSMEM_FLAG_CREATE 0x1
+@@ -23,7 +25,7 @@ struct ssmem_data {
+ 	struct page *listOfPages;
+ 
+ 	/* Too bad this can't be statically declared. */
+-	spinlock_t lock;
++	struct semaphore lock;
+ };
+ 
+ struct ssmem_data data[SSMEM_MAX];
+@@ -35,6 +37,8 @@ static void ssmem_open(struct vm_area_struct *area)
+ 	 * called when copying or splitting a vma.  Do we have anything special
+ 	 * to do when we copy or split a vma?
+ 	 */
++
++	 
+ }
+ 
+ static void ssmem_close(struct vm_area_struct *area)
+@@ -42,7 +46,26 @@ static void ssmem_close(struct vm_area_struct *area)
+ }
+ 
+ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+-{
++{	
++	/* Allocate a page */
++	gfp_t gfp_mask = GFP_USER;
++
++    pte_t *pte;
++
++	/* Order 0 for one page */
++	struct page *pages = alloc_pages(gfp_mask, 0);
++
++	if(!(vmf->flags & VM_FAULT_NOPAGE) && !(vmf->flags & VM_FAULT_ERROR))
++		vmf->page = pages;
++
++	/* Update ssmem_data here */
++
++	spin_lock(&current->mm->pag_table_lock);
++
++		/* Add page to page table for the process */
++
++	spin_unlock(&current->mm->pag_table_lock);	
++
+ 	return -1;
+ }
+ 
+@@ -58,7 +81,7 @@ static int ssmem_access(struct vm_area_struct *area, unsigned long address,
+ 	return -1;
+ }
+ 
+-/**
++/*
+  * Calculates the number of pages required to accomadate memory of size length
+  * bytes.
+  */
+@@ -107,12 +130,15 @@ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ 	gfp_mask = GFP_USER;
+ 
+ 	/* Calculate the number of pages and allocate them. */
+-	page_count = pages_from_bytes(length);
+-	order = page_order(page_count);
+-	pages = alloc_pages(gfp_mask, order);
+-	if (pages == NULL)
+-		return -EINVAL;
+-	data->listOfPages = pages;
++	/* Can not allocate all pages at one
++	 * has to be dne in the page fault handler on Demand
++	 */
++	 page_count = pages_from_bytes(length);
++	 order = page_order(page_count);
++	// pages = alloc_pages(gfp_mask, order);
++	// if (pages == NULL)
++	// 	return -EINVAL;
++	// data->listOfPages = pages;
+ 	data->pagecount = page_count;
+ 	data->isAllocated = 1;
+ 
+@@ -124,8 +150,8 @@ unsigned int init_locks()
+ 	int i;
+ 	if (locks_init)
+ 		return 0;
+-	for (i = 0; i < SSMEM_MAX; i++)
+-		spin_lock_init(&data[i].lock);
++	for(i = 0; i < SSMEM_MAX; i++)
++		init_MUTEX(&data[i].lock);
+ 	locks_init = 1;
+ 
+ 	return 0;
+@@ -142,26 +168,27 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 	if (id < 0 || id > SSMEM_MAX-1)
+ 		return (void *)-EINVAL;
+ 	else {
+-		spin_lock(&data[id].lock);
++		down(&data[id].lock);
+ 		if (flags & SSMEM_FLAG_CREATE) { /*Create */
+-			/* Can't allocated less than or equal to 0. */
++			/* Can't allocate less than or equal to 0. */
+ 			if (length <= 0) {
+-				spin_unlock(&data[id].lock);
++				up(&data[id].lock);
+ 				return (void *) -EINVAL;
+ 			} else {
+ 				if (ssmem_create(&data[id], flags, length) !=
+ 						0) {
+-					spin_unlock(&data[id].lock);
++					up(&data[id].lock);
+ 					return (void *) -EINVAL;
+ 				}
+ 			}
+ 		} else{
+ 			/*attach but don't create*/
+ 			if (data[id].isAllocated == 0) {
+-				spin_unlock(&data[id].lock);
++				up(&data[id].lock);
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
+-				spin_unlock(&data[id].lock);
++				/*add new vma*/
++				up(&data[id].lock);
+ 				return 0;
+ 			}
+ 		}
+-- 
+1.7.9.5
+
+
+From 11f30cd488aca56165d9ab994b686f6004039b74 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 11 Apr 2013 21:47:11 -0400
+Subject: [PATCH 10/61] -added notes to ssmem
+
+---
+ mm/ssmem.c |    9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index dbc8022..759876c 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -133,6 +133,9 @@ unsigned int init_locks()
+ 
+ void *ssmem_attach(int id, int flags, size_t length)
+ {
++	/* This to to stop possible race conditions the first time that the
++	 * function is called before locks are initialized.
++	 */
+ 	if (!locks_init) {
+ 		spin_lock(&big_ssmem_lock);
+ 		init_locks();
+@@ -145,12 +148,12 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 		spin_lock(&data[id].lock);
+ 		if (flags & SSMEM_FLAG_CREATE) { /*Create */
+ 			/* Can't allocated less than or equal to 0. */
+-			if (length <= 0) {
++			if (length <= 0) { /* invalid length */
+ 				spin_unlock(&data[id].lock);
+ 				return (void *) -EINVAL;
+ 			} else {
+-				if (ssmem_create(&data[id], flags, length) !=
+-						0) {
++				if (ssmem_create(&data[id], flags, length)) {
++					/* ssmem_create failed */
+ 					spin_unlock(&data[id].lock);
+ 					return (void *) -EINVAL;
+ 				}
+-- 
+1.7.9.5
+
+
+From 4c57dab733ef5be397f300b345f7e3c16c2c7fbb Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 11 Apr 2013 22:35:47 -0400
+Subject: [PATCH 11/61] -fixed checkpatch and compilation errors.
+
+---
+ mm/ssmem.c |   60 ++++++++++++++++++------------------------------------------
+ 1 file changed, 18 insertions(+), 42 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index ef1ef47..25af384 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -1,6 +1,7 @@
+ #include <linux/mm.h>
+-#include <linux/types.h>
++#include <linux/semaphore.h>
+ #include <linux/spinlock.h>
++#include <linux/types.h>
+ #include <asm/page.h>
+ #include <asm/pgtable.h>
+ 
+@@ -13,7 +14,7 @@
+  * These two fields exists because there would be a race condition when
+  * creating segments for the first time because the locks are not initialized.
+  */
+-DEFINE_SPINLOCK(big_ssmem_lock);
++static DECLARE_MUTEX(big_ssmem_lock);
+ unsigned int locks_init;
+ 
+ struct ssmem_data {
+@@ -37,8 +38,6 @@ static void ssmem_open(struct vm_area_struct *area)
+ 	 * called when copying or splitting a vma.  Do we have anything special
+ 	 * to do when we copy or split a vma?
+ 	 */
+-
+-	 
+ }
+ 
+ static void ssmem_close(struct vm_area_struct *area)
+@@ -46,31 +45,29 @@ static void ssmem_close(struct vm_area_struct *area)
+ }
+ 
+ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+-{	
++{
+ 	/* Allocate a page */
+ 	gfp_t gfp_mask = GFP_USER;
+ 
+-    pte_t *pte;
++	pte_t *pte;
+ 
+ 	/* Order 0 for one page */
+ 	struct page *pages = alloc_pages(gfp_mask, 0);
+ 
+-	if(!(vmf->flags & VM_FAULT_NOPAGE) && !(vmf->flags & VM_FAULT_ERROR))
++	if (!(vmf->flags & VM_FAULT_NOPAGE) && !(vmf->flags & VM_FAULT_ERROR))
+ 		vmf->page = pages;
+ 
+ 	/* Update ssmem_data here */
++	spin_lock(&area->vm_mm->page_table_lock);
+ 
+-	spin_lock(&current->mm->pag_table_lock);
+-
+-		/* Add page to page table for the process */
+-
+-	spin_unlock(&current->mm->pag_table_lock);	
++	/* Add page to page table for the process */
++	spin_unlock(&area->vm_mm->page_table_lock);
+ 
+ 	return -1;
+ }
+ 
+ static int ssmem_page_mkwrite(struct vm_area_struct *area,
+-		struct vm_fault vmf)
++		struct page *pg)
+ {
+ 	return -1;
+ }
+@@ -93,20 +90,6 @@ unsigned int pages_from_bytes(size_t length)
+ 		return length + PAGE_SIZE + 1;
+ }
+ 
+-/**
+- * Returns order on which you should allocate pages.  Basically log base 2 of
+- * the number of pages.
+- */
+-unsigned int page_order(unsigned int page_count)
+-{
+-	unsigned int order = 0;
+-	while (page_count > 0) {
+-		page_count = page_count >> 1;
+-		order++;
+-	}
+-	return order;
+-}
+-
+ /*
+  * Sets up the ssmem_data struct passed in.  Returns 0 on success or -1
+  * otherwise.
+@@ -116,8 +99,7 @@ unsigned int page_order(unsigned int page_count)
+ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ {
+ 	gfp_t gfp_mask;
+-	struct page *pages;
+-	unsigned int page_count, order;
++	unsigned int page_count;
+ 
+ 	if (data->isAllocated)
+ 		return 0;
+@@ -130,15 +112,7 @@ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ 	gfp_mask = GFP_USER;
+ 
+ 	/* Calculate the number of pages and allocate them. */
+-	/* Can not allocate all pages at one
+-	 * has to be dne in the page fault handler on Demand
+-	 */
+-	 page_count = pages_from_bytes(length);
+-	 order = page_order(page_count);
+-	// pages = alloc_pages(gfp_mask, order);
+-	// if (pages == NULL)
+-	// 	return -EINVAL;
+-	// data->listOfPages = pages;
++	page_count = pages_from_bytes(length);
+ 	data->pagecount = page_count;
+ 	data->isAllocated = 1;
+ 
+@@ -150,8 +124,8 @@ unsigned int init_locks()
+ 	int i;
+ 	if (locks_init)
+ 		return 0;
+-	for(i = 0; i < SSMEM_MAX; i++)
+-		init_MUTEX(&data[i].lock);
++	for (i = 0; i < SSMEM_MAX; i++)
++		sema_init(&data[i].lock, 1);
+ 	locks_init = 1;
+ 
+ 	return 0;
+@@ -163,9 +137,9 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 	 * function is called before locks are initialized.
+ 	 */
+ 	if (!locks_init) {
+-		spin_lock(&big_ssmem_lock);
++		up(&big_ssmem_lock);
+ 		init_locks();
+-		spin_unlock(&big_ssmem_lock);
++		down(&big_ssmem_lock);
+ 	}
+ 	/* Error Check */
+ 	if (id < 0 || id > SSMEM_MAX-1)
+@@ -183,6 +157,8 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 						0) {
+ 					up(&data[id].lock);
+ 					return (void *) -EINVAL;
++				} else {
++					return 0;
+ 				}
+ 			}
+ 		} else{
+-- 
+1.7.9.5
+
+
+From 34d3ce55653f3f667ac350d6f824ec4c27b37513 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 11 Apr 2013 23:14:51 -0400
+Subject: [PATCH 12/61] -added mmaping and associated functions.
+
+---
+ mm/ssmem.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 48 insertions(+), 5 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 25af384..7bdb8dc 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -2,6 +2,7 @@
+ #include <linux/semaphore.h>
+ #include <linux/spinlock.h>
+ #include <linux/types.h>
++#include <linux/mman.h>
+ #include <asm/page.h>
+ #include <asm/pgtable.h>
+ 
+@@ -53,7 +54,6 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 	/* Order 0 for one page */
+ 	struct page *pages = alloc_pages(gfp_mask, 0);
+-
+ 	if (!(vmf->flags & VM_FAULT_NOPAGE) && !(vmf->flags & VM_FAULT_ERROR))
+ 		vmf->page = pages;
+ 
+@@ -92,7 +92,8 @@ unsigned int pages_from_bytes(size_t length)
+ 
+ /*
+  * Sets up the ssmem_data struct passed in.  Returns 0 on success or -1
+- * otherwise.
++ * otherwise.  You must hold the data->lock semaphore when calling this
++ * function.
+  *
+  * NOTE: This does not handle vmas and anon_vmas
+  */
+@@ -119,6 +120,9 @@ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ 	return 0;
+ }
+ 
++/*
++ * Initialize the locks for all of the ssmem data structures.
++ */
+ unsigned int init_locks()
+ {
+ 	int i;
+@@ -131,8 +135,37 @@ unsigned int init_locks()
+ 	return 0;
+ }
+ 
++/**
++ * Returns the protection flags for the new vma.
++ */
++int get_vma_prot(int input_flags)
++{
++	int return_prot;
++	return_prot = 0;
++	if (input_flags & SSMEM_FLAG_WRITE)
++		return_prot = return_prot | PROT_WRITE;
++	if (input_flags & SSMEM_FLAG_EXEC)
++		return_prot = return_prot | PROT_EXEC;
++	return return_prot;
++}
++
++/*
++ * Returns the flags for the new mmaped vma.
++ * Does not need to be an entire function now but may be useful later.
++ */
++int get_vma_flags(int input_flags)
++{
++	int vma_flags;
++	vma_flags = MAP_SHARED;
++	return vma_flags;
++}
++
+ void *ssmem_attach(int id, int flags, size_t length)
+ {
++	int vma_prot;
++	int vma_flags;
++	unsigned long ret_addr;
++
+ 	/* This to to stop possible race conditions the first time that the
+ 	 * function is called before locks are initialized.
+ 	 */
+@@ -141,6 +174,10 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 		init_locks();
+ 		down(&big_ssmem_lock);
+ 	}
++
++	vma_prot = get_vma_prot(flags);
++	vma_flags = get_vma_flags(flags);
++
+ 	/* Error Check */
+ 	if (id < 0 || id > SSMEM_MAX-1)
+ 		return (void *)-EINVAL;
+@@ -158,7 +195,12 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 					up(&data[id].lock);
+ 					return (void *) -EINVAL;
+ 				} else {
+-					return 0;
++					ret_addr = do_mmap(NULL, 0,
++							data[id].length,
++							vma_prot,
++							vma_flags, 0);
++					up(&data[id].lock);
++					return (void *)ret_addr;
+ 				}
+ 			}
+ 		} else{
+@@ -167,9 +209,10 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 				up(&data[id].lock);
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
+-				/*add new vma*/
++				ret_addr = do_mmap(NULL, 0, data[id].length,
++						vma_prot, vma_flags, 0);
+ 				up(&data[id].lock);
+-				return 0;
++				return (void *)ret_addr;
+ 			}
+ 		}
+ 	}
+-- 
+1.7.9.5
+
+
+From 52b94f14f6939bb138311e688c5c6eaa12375ee8 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 11 Apr 2013 23:40:18 -0400
+Subject: [PATCH 13/61] -added locking to do_mmap calls.
+
+---
+ mm/ssmem.c |   17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 7bdb8dc..96a9b01 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -3,6 +3,7 @@
+ #include <linux/spinlock.h>
+ #include <linux/types.h>
+ #include <linux/mman.h>
++#include <linux/rmap.h>
+ #include <asm/page.h>
+ #include <asm/pgtable.h>
+ 
+@@ -99,19 +100,10 @@ unsigned int pages_from_bytes(size_t length)
+  */
+ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ {
+-	gfp_t gfp_mask;
+ 	unsigned int page_count;
+ 
+ 	if (data->isAllocated)
+ 		return 0;
+-
+-	/*
+-	 * Page should not be reclaimable or movable. It's to be used by the
+-	 * user
+-	 * TODO = check this.
+-	 */
+-	gfp_mask = GFP_USER;
+-
+ 	/* Calculate the number of pages and allocate them. */
+ 	page_count = pages_from_bytes(length);
+ 	data->pagecount = page_count;
+@@ -195,10 +187,12 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 					up(&data[id].lock);
+ 					return (void *) -EINVAL;
+ 				} else {
++					down_write(&current->mm->mmap_sem);
+ 					ret_addr = do_mmap(NULL, 0,
+ 							data[id].length,
+ 							vma_prot,
+ 							vma_flags, 0);
++					up_write(&current->mm->mmap_sem);
+ 					up(&data[id].lock);
+ 					return (void *)ret_addr;
+ 				}
+@@ -209,8 +203,13 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 				up(&data[id].lock);
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
++				down_write(&current->mm->mmap_sem);
+ 				ret_addr = do_mmap(NULL, 0, data[id].length,
+ 						vma_prot, vma_flags, 0);
++				/* TODO
++				 * Map into anon_vma
++				 */
++				up_write(&current->mm->mmap_sem);
+ 				up(&data[id].lock);
+ 				return (void *)ret_addr;
+ 			}
+-- 
+1.7.9.5
+
+
+From 0b3515d858c9895c18581779e90d511548055686 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Sat, 13 Apr 2013 10:40:10 -0400
+Subject: [PATCH 14/61] -refactored attaching the mmap out to its own
+ function.
+
+---
+ mm/ssmem.c |   27 +++++++++++++++++----------
+ 1 file changed, 17 insertions(+), 10 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 96a9b01..7763078 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -152,6 +152,21 @@ int get_vma_flags(int input_flags)
+ 	return vma_flags;
+ }
+ 
++/*
++ * Contains the logic for mmaping memory including locking and unlocking.
++ * vma_prot - protection flags for the vma
++ * vma_flags - flags for the VMA
++ * size - the size of the memory segment.
++ */
++void *mmap_attach(int vma_prot, int vma_flags, size_t size)
++{
++	void *ret_addr;
++	down_write(&current->mm->mmap_sem);
++	ret_addr = do_mmap(NULL, 0, size, vma_prot, vma_flags, 0);
++	up_write(&current->mm->mmap_sem);
++	return ret_addr;
++}
++
+ void *ssmem_attach(int id, int flags, size_t length)
+ {
+ 	int vma_prot;
+@@ -187,12 +202,7 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 					up(&data[id].lock);
+ 					return (void *) -EINVAL;
+ 				} else {
+-					down_write(&current->mm->mmap_sem);
+-					ret_addr = do_mmap(NULL, 0,
+-							data[id].length,
+-							vma_prot,
+-							vma_flags, 0);
+-					up_write(&current->mm->mmap_sem);
++					ret_addr = mmap_attach(vma_prot, vma_flags, data[id].length);
+ 					up(&data[id].lock);
+ 					return (void *)ret_addr;
+ 				}
+@@ -203,13 +213,10 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 				up(&data[id].lock);
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
+-				down_write(&current->mm->mmap_sem);
+-				ret_addr = do_mmap(NULL, 0, data[id].length,
+-						vma_prot, vma_flags, 0);
++				ret_addr = mmap_attach(vma_prot, vma_flags, data[id].length);
+ 				/* TODO
+ 				 * Map into anon_vma
+ 				 */
+-				up_write(&current->mm->mmap_sem);
+ 				up(&data[id].lock);
+ 				return (void *)ret_addr;
+ 			}
+-- 
+1.7.9.5
+
+
+From 2fa13ba49fafb05c084ea33b69284d9773406393 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Sat, 13 Apr 2013 11:48:04 -0400
+Subject: [PATCH 15/61] -moved mmap attachment into its own funcion. -instead
+ of using anon_vmap using a linked list of nodes.
+ -need to make sure that it is being used correctly.
+
+---
+ include/linux/mm_types.h |    2 ++
+ mm/ssmem.c               |   52 ++++++++++++++++++++++++++++++++--------------
+ 2 files changed, 38 insertions(+), 16 deletions(-)
+
+diff --git a/include/linux/mm_types.h b/include/linux/mm_types.h
+index d84feb7..a193c97 100644
+--- a/include/linux/mm_types.h
++++ b/include/linux/mm_types.h
+@@ -174,6 +174,8 @@ struct vm_area_struct {
+ #ifdef CONFIG_NUMA
+ 	struct mempolicy *vm_policy;	/* NUMA policy for the VMA */
+ #endif
++	/* Added by Riley Spahn 4/13/13 */
++	struct list_head ssmem_node;
+ };
+ 
+ struct core_thread {
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 7763078..9eec9cc 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -1,3 +1,4 @@
++#include <linux/list.h>
+ #include <linux/mm.h>
+ #include <linux/semaphore.h>
+ #include <linux/spinlock.h>
+@@ -26,6 +27,7 @@ struct ssmem_data {
+ 	int numOfMappers;
+ 	struct anon_vma *listOfMappers;
+ 	struct page *listOfPages;
++	struct list_head *vma_list;
+ 
+ 	/* Too bad this can't be statically declared. */
+ 	struct semaphore lock;
+@@ -101,19 +103,21 @@ unsigned int pages_from_bytes(size_t length)
+ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ {
+ 	unsigned int page_count;
++	struct list_head *vma_list;
+ 
+ 	if (data->isAllocated)
+ 		return 0;
+ 	/* Calculate the number of pages and allocate them. */
+ 	page_count = pages_from_bytes(length);
+ 	data->pagecount = page_count;
++	vma_list = data->vma_list;
+ 	data->isAllocated = 1;
+ 
+ 	return 0;
+ }
+ 
+ /*
+- * Initialize the locks for all of the ssmem data structures.
++ * Initialize the locks and list heads for all gt
+  */
+ unsigned int init_locks()
+ {
+@@ -144,11 +148,13 @@ int get_vma_prot(int input_flags)
+ /*
+  * Returns the flags for the new mmaped vma.
+  * Does not need to be an entire function now but may be useful later.
++ * VM_SHARED - note that the memory is shared.
++ * VM_RESERVED - note that the memory should not be swapped out.
+  */
+ int get_vma_flags(int input_flags)
+ {
+ 	int vma_flags;
+-	vma_flags = MAP_SHARED;
++	vma_flags = VM_SHARED | VM_RESERVED;
+ 	return vma_flags;
+ }
+ 
+@@ -158,11 +164,24 @@ int get_vma_flags(int input_flags)
+  * vma_flags - flags for the VMA
+  * size - the size of the memory segment.
+  */
+-void *mmap_attach(int vma_prot, int vma_flags, size_t size)
++unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
++		struct list_head *vma_list)
+ {
+-	void *ret_addr;
++	struct vm_area_struct *new_vma;
++	unsigned long ret_addr;
+ 	down_write(&current->mm->mmap_sem);
+ 	ret_addr = do_mmap(NULL, 0, size, vma_prot, vma_flags, 0);
++
++	/*
++	 * May need to lock mm?
++	 * TODO: Make sure lists are being created correctly.
++	 */
++	spin_lock(&current->mm->page_table_lock);
++	new_vma = find_vma(current->mm, ret_addr);
++	INIT_LIST_HEAD(&new_vma->ssmem_node);
++	list_add(&new_vma->ssmem_node, vma_list);
++	spin_unlock(&current->mm->page_table_lock);
++
+ 	up_write(&current->mm->mmap_sem);
+ 	return ret_addr;
+ }
+@@ -197,15 +216,18 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 				up(&data[id].lock);
+ 				return (void *) -EINVAL;
+ 			} else {
+-				if (ssmem_create(&data[id], flags, length) !=
+-						0) {
+-					up(&data[id].lock);
+-					return (void *) -EINVAL;
+-				} else {
+-					ret_addr = mmap_attach(vma_prot, vma_flags, data[id].length);
+-					up(&data[id].lock);
+-					return (void *)ret_addr;
++				/* Create if it is not already allocated. */
++				if (!data[id].isAllocated) {
++					if (ssmem_create(&data[id], flags,
++							length) != 0) {
++						up(&data[id].lock);
++						return (void *) -EINVAL;
++					}
+ 				}
++				ret_addr = mmap_attach(vma_prot, vma_flags,
++					data[id].length, data[id].vma_list);
++				up(&data[id].lock);
++				return (void *)ret_addr;
+ 			}
+ 		} else{
+ 			/*attach but don't create*/
+@@ -213,10 +235,8 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 				up(&data[id].lock);
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
+-				ret_addr = mmap_attach(vma_prot, vma_flags, data[id].length);
+-				/* TODO
+-				 * Map into anon_vma
+-				 */
++				ret_addr = mmap_attach(vma_prot, vma_flags,
++					data[id].length, data[id].vma_list);
+ 				up(&data[id].lock);
+ 				return (void *)ret_addr;
+ 			}
+-- 
+1.7.9.5
+
+
+From 9e321e3cc12fe1bc61c44ad2e172f5d3203bd1a6 Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Sat, 13 Apr 2013 15:00:42 -0400
+Subject: [PATCH 16/61] Some work on ssmempipe
+
+---
+ include/linux/syscalls.h    |    4 +-
+ mm/ssmem.c                  |   15 ++++-
+ userspace_tests/Makefile    |   51 +++++++++++++++
+ userspace_tests/ssmempipe.c |  145 +++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 210 insertions(+), 5 deletions(-)
+ create mode 100644 userspace_tests/Makefile
+ create mode 100644 userspace_tests/ssmempipe.c
+
+diff --git a/include/linux/syscalls.h b/include/linux/syscalls.h
+index f60be73..efecbbf 100644
+--- a/include/linux/syscalls.h
++++ b/include/linux/syscalls.h
+@@ -692,8 +692,8 @@ asmlinkage long sys_ppoll(struct pollfd __user *, unsigned int,
+ 			  size_t);
+ asmlinkage long sys_pipe2(int __user *, int);
+ asmlinkage long sys_pipe(int __user *);
+-asmlinkage void *ssmem_attach(int __user, int __user, size_t __user);
+-asmlinkage int ssmem_datch(void * __user);
++asmlinkage void *ssmem_attach(int, int, size_t);
++asmlinkage int ssmem_datch(void *);
+ int kernel_execve(const char *filename, char *const argv[], char *const envp[]);
+ 
+ #endif
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 96a9b01..25e8e98 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -152,11 +152,13 @@ int get_vma_flags(int input_flags)
+ 	return vma_flags;
+ }
+ 
+-void *ssmem_attach(int id, int flags, size_t length)
++asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ {
+ 	int vma_prot;
+ 	int vma_flags;
+ 	unsigned long ret_addr;
++	
++	printk("id: %d, flags: %d, length: %d\n", id, flags, length);
+ 
+ 	/* This to to stop possible race conditions the first time that the
+ 	 * function is called before locks are initialized.
+@@ -171,8 +173,11 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 	vma_flags = get_vma_flags(flags);
+ 
+ 	/* Error Check */
+-	if (id < 0 || id > SSMEM_MAX-1)
++	if (id < 0 || id > SSMEM_MAX-1) {
++	  printk("invalid id\n");
+ 		return (void *)-EINVAL;
++	}
++
+ 	else {
+ 		down(&data[id].lock);
+ 		if (flags & SSMEM_FLAG_CREATE) { /*Create */
+@@ -185,6 +190,7 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 				if (ssmem_create(&data[id], flags, length) !=
+ 						0) {
+ 					up(&data[id].lock);
++					printk("couldn't create segment\n");
+ 					return (void *) -EINVAL;
+ 				} else {
+ 					down_write(&current->mm->mmap_sem);
+@@ -194,6 +200,7 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 							vma_flags, 0);
+ 					up_write(&current->mm->mmap_sem);
+ 					up(&data[id].lock);
++					printk("segment created\n");
+ 					return (void *)ret_addr;
+ 				}
+ 			}
+@@ -201,6 +208,7 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 			/*attach but don't create*/
+ 			if (data[id].isAllocated == 0) {
+ 				up(&data[id].lock);
++				printk("couldn't attach\n");
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
+ 				down_write(&current->mm->mmap_sem);
+@@ -211,6 +219,7 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 				 */
+ 				up_write(&current->mm->mmap_sem);
+ 				up(&data[id].lock);
++				printk("attached\n");
+ 				return (void *)ret_addr;
+ 			}
+ 		}
+@@ -229,7 +238,7 @@ struct vm_operations_struct ssmem_vm_ops = {
+ /*
+ * Detach
+ */
+-int ssmem_detach(void *addr)
++asmlinkage int ssmem_detach(void *addr)
+ {
+   return 0;
+ }
+diff --git a/userspace_tests/Makefile b/userspace_tests/Makefile
+new file mode 100644
+index 0000000..93f5a7a
+--- /dev/null
++++ b/userspace_tests/Makefile
+@@ -0,0 +1,51 @@
++APP := ssmempipe
++ROOT:=/opt
++NDK_PLATFORM_VER := 14
++INSTALL_DIR := /data/tmp
++
++ANDROID_SDK_ROOT:=$(ROOT)/android-sdk
++ANDROID_NDK_ROOT:=$(ROOT)/android-ndk
++ANDROID_NDK_HOST:=linux-x86
++ANDROID_TARGET:=i686-linux-android
++ANDROID_TARGET_ARCH:=x86
++ANDROID_TOOLCHAIN:=x86-4.4.3
++
++BINDIR:=$(ANDROID_NDK_ROOT)/toolchains/$(ANDROID_TOOLCHAIN)/prebuilt/$(ANDROID_NDK_HOST)
++LIBDIR:=$(ANDROID_NDK_ROOT)/platforms/android-$(NDK_PLATFORM_VER)/arch-$(ANDROID_TARGET_ARCH)/usr/lib
++INCDIR:=$(ANDROID_NDK_ROOT)/platforms/android-$(NDK_PLATFORM_VER)/arch-$(ANDROID_TARGET_ARCH)/usr/include
++BIN := $(BINDIR)/bin
++ 
++CPP := $(BIN)/$(ANDROID_TARGET)-g++
++CC := $(BIN)/$(ANDROID_TARGET)-gcc
++CFLAGS := -I$(INCDIR)
++LDFLAGS := -Wl,-rpath-link=$(LIBDIR),-dynamic-linker=/system/bin/linker -L$(LIBDIR) 
++LDFLAGS += $(LIBDIR)/crtbegin_dynamic.o $(LIBDIR)/crtend_android.o -nostdlib -lc -disable-multilib -lm
++ 
++ 
++all: $(APP)
++ 
++OBJS += $(APP).o
++ 
++$(APP): $(OBJS)
++	$(CC) $(LDFLAGS) -o $@ $^
++ 
++%.o: %.c
++	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@ 
++install: $(APP)
++	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP) 
++	$(ANDROID_SDK_ROOT)/platform-tools/adb shell chmod 777 $(INSTALL_DIR)/$(APP)
++ 
++shell:
++	$(ANDROID_SDK_ROOT)/platform-tools/adb shell
++ 
++run:
++	$(ANDROID_SDK_ROOT)/platform-tools/adb shell $(INSTALL_DIR)/$(APP)
++ 
++r: $(APP)
++	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP) 
++	$(ANDROID_SDK_ROOT)/platform-tools/adb shell chmod 777 $(INSTALL_DIR)/$(APP)
++	$(ANDROID_SDK_ROOT)/platform-tools/adb shell $(INSTALL_DIR)/$(APP)
++ 
++clean:
++	@rm -f $(APP).o $(APP)
++
+diff --git a/userspace_tests/ssmempipe.c b/userspace_tests/ssmempipe.c
+new file mode 100644
+index 0000000..70aa7c2
+--- /dev/null
++++ b/userspace_tests/ssmempipe.c
+@@ -0,0 +1,145 @@
++#include <stdio.h>
++#include <unistd.h>
++#include <sys/syscall.h>
++#include <string.h>
++#include <errno.h>
++
++#define __ssmem_attach 333
++#define __ssmem_detach 334
++#define SSMEM_FLAG_CREATE 0x1
++#define SSMEM_FLAG_WRITE 0x2
++#define SSMEM_FLAG_EXEC 0x4
++
++#define SEG_SIZE 8192
++#define SLOT_SIZE 1024
++#define SLOTS SEG_SIZE/SLOT_SIZE
++
++struct slot {
++  int name;
++  int readers;
++  int **read;
++  int written[SLOTS];
++};
++
++void *attach(int id) {
++    // first try to attach
++    void *addr = syscall(__ssmem_attach, id, SSMEM_FLAG_WRITE, SEG_SIZE);
++    int errsv = errno;
++
++    if (errsv == EINVAL) {
++      printf("Invalid id\n");
++      return -1;
++    } else if (errsv == ENOMEM) {
++      printf("Memory could not be allocated\n");
++      return -1;
++    }
++    // if we can't attach because the segment doesn't exist then try to create it
++    else if (errsv == EADDRNOTAVAIL) {      
++      addr = syscall(__ssmem_attach, id, SSMEM_FLAG_CREATE | SSMEM_FLAG_WRITE, SEG_SIZE);
++      return addr;
++    }
++}
++
++int main(int argc, char **argv) 
++{
++  
++  if (argc != 4) {
++    printf("Usage: ssmpipe <name> <ssmem_id> <type>\n");
++    return 0;
++  }
++
++  int name = atoi(argv[1]);  
++  int id = atoi(argv[2]);
++  int slot = 0;
++  void *addr = attach(id);
++  void *start = addr;
++  struct slot slot0 = *((struct slot *)&addr);
++  int i;
++
++  if (strncmp(argv[3], "reader", strlen("reader")) == 0) {    
++
++    if (slot0.name == -1) {
++
++      slot0.name = name;
++      slot0.readers = 1;
++      slot0.read = malloc(sizeof(int *));
++      *(slot0.read) = malloc(sizeof(int)*SLOTS);
++
++    } else if (slot0.name == name) {
++
++      slot0.readers++;
++      int **new_read = malloc(sizeof(int *)*slot0.readers);
++
++      for(i = 0; i < slot0.readers-1; i++) {
++	memcpy(new_read[i], slot0.read[i], sizeof(int)*SLOTS);
++      	free(slot0.read[i]);
++      }
++
++      new_read[slot0.readers-1] = malloc(sizeof(int)*SLOTS);
++
++      for(i = 0; i < SLOTS; i++) {
++	new_read[slot0.readers-1][i] = 0;
++      }
++      
++      slot0.read = new_read;
++      
++    }
++
++    addr = &slot0;
++    addr = (char *)addr + SLOT_SIZE;
++    
++
++    /*
++	  char *data = "hi";
++	  addr = data;
++
++	  char *str = ((char *)addr);
++	  printf("%s\n", str);
++    */
++
++    return 0;
++    
++  } else if (strncmp(argv[3], "writer", strlen("writer")) == 0) {
++
++    char *data = (char *)malloc(sizeof(char)*SLOT_SIZE);
++
++    if (slot0.name == -1) {
++      slot0.name = name;
++      slot0.readers = 0;
++    }
++
++    addr = &slot0;
++    addr = (char *)addr + SLOT_SIZE;
++    int read = 0;
++
++    while(1) {
++      fgets(data, sizeof(data), stdin);
++
++      read = 0;
++
++      while (read != slot0.readers) {
++	
++	for (i = 0; i < slot0.readers; i++) {
++	  read += slot0.read[i][slot];
++	  slot0
++	}
++
++	if (read == slot0.readers) {
++	  addr = data;
++	  slot0.written[slot] = 1;
++	} else {
++	  sleep(1);
++	}
++      }
++       
++      if (++slot < SLOTS) {
++	addr = (char *)addr + SLOT_SIZE;
++      } else {
++	addr = (char *)start + SLOT_SIZE;
++	slot = 1;
++      }
++    }
++  }
++}
++
++
+-- 
+1.7.9.5
+
+
+From 1473016df32bad6ecec034115dcf8cab7419e4e7 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Sat, 13 Apr 2013 15:18:11 -0400
+Subject: [PATCH 17/61] added debugt prints.
+
+---
+ mm/ssmem.c |   15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 9eec9cc..bea88c4 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -191,6 +191,7 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 	int vma_prot;
+ 	int vma_flags;
+ 	unsigned long ret_addr;
++	printk(KERN_DEBUG "id = %d, flags = %d, length = %d\n", id, flags, length);
+ 
+ 	/* This to to stop possible race conditions the first time that the
+ 	 * function is called before locks are initialized.
+@@ -204,34 +205,46 @@ void *ssmem_attach(int id, int flags, size_t length)
+ 	vma_prot = get_vma_prot(flags);
+ 	vma_flags = get_vma_flags(flags);
+ 
++	printk(KERN_DEBUG "Entering Error Check.\n");
+ 	/* Error Check */
+-	if (id < 0 || id > SSMEM_MAX-1)
++	if (id < 0 || id > SSMEM_MAX - 1){
++		printk(KERN_DEBUG "ERROR: id= %d\n", id);
+ 		return (void *)-EINVAL;
++	}
+ 	else {
++		printk(KERN_DEBUG "No id ERROR. flags = %d\n", flags);
+ 		down(&data[id].lock);
+ 		if (flags & SSMEM_FLAG_CREATE) { /*Create */
++			printk(KERN_DEBUG "CREATION.\n");
+ 
+ 			/* Can't allocate less than or equal to 0. */
+ 			if (length <= 0) {
++				printk(KERN_DEBUG "invalid length\n");
+ 				up(&data[id].lock);
+ 				return (void *) -EINVAL;
+ 			} else {
++				printk(KERN_DEBUG "valid length.\n");
+ 				/* Create if it is not already allocated. */
+ 				if (!data[id].isAllocated) {
++					printk(KERN_DEBUG "not allocated.\n");
+ 					if (ssmem_create(&data[id], flags,
+ 							length) != 0) {
++						printk(KERN_DEBUG "failed to created ssmem.\n");
+ 						up(&data[id].lock);
+ 						return (void *) -EINVAL;
+ 					}
+ 				}
++				printk(KERN_DEBUG "Created ssmem.\n");
+ 				ret_addr = mmap_attach(vma_prot, vma_flags,
+ 					data[id].length, data[id].vma_list);
+ 				up(&data[id].lock);
+ 				return (void *)ret_addr;
+ 			}
+ 		} else{
++			printk(KERN_DEBUG "attach but don't create\n");
+ 			/*attach but don't create*/
+ 			if (data[id].isAllocated == 0) {
++				printk(KERN_DEBUG "Can't attach.  Not created.\n");
+ 				up(&data[id].lock);
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
+-- 
+1.7.9.5
+
+
+From 8fdb4660dae2304f0767c26a3894b9716485ff8b Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Sun, 14 Apr 2013 14:11:04 -0400
+Subject: [PATCH 18/61] cleaned up ssmempipe
+
+---
+ mm/ssmem.c                  |    9 ++--
+ userspace_tests/ssmempipe.c |  115 ++++++++++++++++++++++++++++---------------
+ 2 files changed, 78 insertions(+), 46 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 7eaaf74..a81600e 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -46,6 +46,7 @@ static void ssmem_open(struct vm_area_struct *area)
+ 
+ static void ssmem_close(struct vm_area_struct *area)
+ {
++
+ }
+ 
+ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+@@ -175,9 +176,8 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 	unsigned long ret_addr, offset, addr;
+ 
+ 	vma_prot = PROT_READ | PROT_WRITE; 
+-	//vma_flags = MAP_SHARED;	
++	vma_flags = MAP_SHARED;	
+ 	//vma_prot = 0;
+-	vma_flags = 0;
+ 
+ 	offset = 0;
+ 	addr = 0;
+@@ -270,13 +270,12 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 			if (data[id].isAllocated == 0) {
+ 				printk(KERN_DEBUG "Can't attach.  Not created.\n");
+ 				up(&data[id].lock);
+-				printk("couldn't attach\n");
++
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
+ 				ret_addr = mmap_attach(vma_prot, vma_flags,
+ 					data[id].length, data[id].vma_list);
+ 				up(&data[id].lock);
+-				printk("attached\n");
+ 				return (void *)ret_addr;
+ 			}
+ 		}
+@@ -297,5 +296,5 @@ struct vm_operations_struct ssmem_vm_ops = {
+ */
+ asmlinkage int ssmem_detach(void *addr)
+ {
+-  return 0;
++  
+ }
+diff --git a/userspace_tests/ssmempipe.c b/userspace_tests/ssmempipe.c
+index b3d9a00..efc9892 100644
+--- a/userspace_tests/ssmempipe.c
++++ b/userspace_tests/ssmempipe.c
+@@ -1,4 +1,5 @@
+ #include <stdio.h>
++#include <stdlib.h>
+ #include <unistd.h>
+ #include <sys/syscall.h>
+ #include <string.h>
+@@ -15,29 +16,29 @@
+ #define SLOTS SEG_SIZE/SLOT_SIZE
+ 
+ struct slot {
+-  int name;
++  int id;
+   int readers;
+   int **read;
+   int written[SLOTS];
+ };
+ 
+ void *attach(int id) {
+-    // first try to attach
+-    void *addr = syscall(__ssmem_attach, id, SSMEM_FLAG_WRITE, SEG_SIZE);
+-    int errsv = errno;
+-
+-    if (errsv == EINVAL) {
+-      printf("Invalid id\n");
+-      return -1;
+-    } else if (errsv == ENOMEM) {
+-      printf("Memory could not be allocated\n");
+-      return -1;
+-    }
+-    // if we can't attach because the segment doesn't exist then try to create it
+-    else if (errsv == EADDRNOTAVAIL) {      
+-      addr = syscall(__ssmem_attach, id, SSMEM_FLAG_CREATE | SSMEM_FLAG_WRITE, SEG_SIZE);
+-      return addr;
+-    }
++  // first try to attach
++
++  void *addr = (void *)syscall(__ssmem_attach, id, SSMEM_FLAG_WRITE, SEG_SIZE);
++
++  if (errno == EINVAL) {
++    printf("Invalid id\n");
++    exit(-1);
++  } else if (errno == ENOMEM) {
++    printf("Memory could not be allocated\n");
++    exit(-1);
++  }
++  // if we can't attach because the segment doesn't exist then try to create it
++  else if (errno == EADDRNOTAVAIL) {      
++    addr = (void *)syscall(__ssmem_attach, id, SSMEM_FLAG_CREATE | SSMEM_FLAG_WRITE, SEG_SIZE);
++    return addr;
++  }
+ }
+ 
+ int main(int argc, char **argv) 
+@@ -53,49 +54,76 @@ int main(int argc, char **argv)
+   int slot = 0;
+   void *addr = attach(id);
+   void *start = addr;
+-  struct slot slot0 = *((struct slot *)&addr);
++  struct slot slot0 = *((struct slot *)addr);
+   int i;
+ 
+   if (strncmp(argv[3], "reader", strlen("reader")) == 0) {    
+ 
+-    if (slot0.name == -1) {
+-
+-      slot0.name = name;
++    if (slot0.id != id || slot0.readers == 0) {
++      slot0.id = id;
+       slot0.readers = 1;
+-      slot0.read = malloc(sizeof(int *));
+-      *(slot0.read) = malloc(sizeof(int)*SLOTS);
++      slot0.read = (int **)malloc(sizeof(int *));
++      *(slot0.read) = (int*)malloc(sizeof(int)*SLOTS);
+ 
+-    } else if (slot0.name == name) {
++      if (slot0.read == NULL || *(slot0.read) == NULL) {
++	printf("malloc error\n");
++	return -1;
++      }
++
++    } else {
+ 
+       slot0.readers++;
+-      int **new_read = malloc(sizeof(int *)*slot0.readers);
++      int **new_read = (int **)malloc(sizeof(int *)*slot0.readers);
++      
++      if (new_read == NULL) {
++	printf("malloc error\n");
++	return -1;	
++      }
+ 
+       for(i = 0; i < slot0.readers-1; i++) {
+ 	memcpy(new_read[i], slot0.read[i], sizeof(int)*SLOTS);
+       	free(slot0.read[i]);
+       }
+ 
+-      new_read[slot0.readers-1] = malloc(sizeof(int)*SLOTS);
++      new_read[slot0.readers-1] = (int *)malloc(sizeof(int)*SLOTS);
+ 
++      if (new_read[slot0.readers-1] == NULL) {
++	printf("malloc error\n");
++	return -1;
++      }
++      
+       for(i = 0; i < SLOTS; i++) {
+ 	new_read[slot0.readers-1][i] = 0;
+       }
+       
+       slot0.read = new_read;
+-      
+     }
+ 
+-    addr = &slot0;
++    //    int reader_id = slot0.readers-1;
++    int reader_id = name;
++
++    start = (void *)&slot0;
+     addr = (char *)addr + SLOT_SIZE;
++    slot++;
+     
++    while(1) {
++    
++      slot0 = *((struct slot *)start);
+ 
+-    /*
+-	  char *data = "hi";
+-	  addr = data;
+-
+-	  char *str = ((char *)addr);
+-	  printf("%s\n", str);
+-    */
++      if (slot0.written[slot]) {
++	char *data = ((char *)addr);
++	printf("reader%d: %s", reader_id, data);
++	slot0.read[reader_id][slot] = 1;
++	start = (void *)&slot0;
++	
++	if (++slot < SLOTS) {
++	  addr = (char *)addr + SLOT_SIZE;
++	} else {
++	  addr = (char *)start + SLOT_SIZE;
++	  slot = 1;
++	}
++      }      
++    }
+ 
+     return 0;
+     
+@@ -103,12 +131,12 @@ int main(int argc, char **argv)
+ 
+     char *data = (char *)malloc(sizeof(char)*SLOT_SIZE);
+ 
+-    if (slot0.name == -1) {
+-      slot0.name = name;
++    if (slot0.id != id) {
++      slot0.id = id;
+       slot0.readers = 0;
+     }
+ 
+-    addr = &slot0;
++    start = &slot0;
+     addr = (char *)addr + SLOT_SIZE;
+     int read = 0;
+ 
+@@ -116,7 +144,8 @@ int main(int argc, char **argv)
+       fgets(data, sizeof(data), stdin);
+ 
+       read = 0;
+-
++      slot0 = *((struct slot *)start);
++      
+       while (read != slot0.readers) {
+ 	
+ 	for (i = 0; i < slot0.readers; i++) {
+@@ -126,7 +155,13 @@ int main(int argc, char **argv)
+ 	if (read == slot0.readers) {
+ 	  addr = data;
+ 	  slot0.written[slot] = 1;
++
++	  for (i = 0; i < slot0.readers; i++) {
++	    slot0.read[i][slot] = 0;
++	  }
++
+ 	} else {
++	  read = 0;
+ 	  sleep(1);
+ 	}
+       }
+@@ -140,5 +175,3 @@ int main(int argc, char **argv)
+     }
+   }
+ }
+-
+-
+-- 
+1.7.9.5
+
+
+From cddac1af9d05fad482d1ead5514efa59411aff57 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Sun, 14 Apr 2013 15:26:14 -0400
+Subject: [PATCH 19/61] -made PROT_READ default. -change VM_* to MAP_.
+
+---
+ mm/ssmem.c |    8 ++------
+ 1 file changed, 2 insertions(+), 6 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index a81600e..1b16c8c 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -142,7 +142,7 @@ unsigned int init_locks()
+ int get_vma_prot(int input_flags)
+ {
+ 	int return_prot;
+-	return_prot = 0;
++	return_prot = PROT_READ;
+ 	if (input_flags & SSMEM_FLAG_WRITE)
+ 		return_prot = return_prot | PROT_WRITE;
+ 	if (input_flags & SSMEM_FLAG_EXEC)
+@@ -159,7 +159,7 @@ int get_vma_prot(int input_flags)
+ int get_vma_flags(int input_flags)
+ {
+ 	int vma_flags;
+-	vma_flags = VM_SHARED | VM_RESERVED;
++	vma_flags = MAP_SHARED | MAP_LOCKED;
+ 	return vma_flags;
+ }
+ 
+@@ -175,10 +175,6 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 	struct vm_area_struct *new_vma;
+ 	unsigned long ret_addr, offset, addr;
+ 
+-	vma_prot = PROT_READ | PROT_WRITE; 
+-	vma_flags = MAP_SHARED;	
+-	//vma_prot = 0;
+-
+ 	offset = 0;
+ 	addr = 0;
+ 	new_vma = NULL;
+-- 
+1.7.9.5
+
+
+From 729b516848b52f8770cf768f18f5935040b37618 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Sun, 14 Apr 2013 19:52:54 -0400
+Subject: [PATCH 20/61] -readded list insertion.
+
+---
+ mm/ssmem.c |   20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index a81600e..665d3e1 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -115,7 +115,7 @@ unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
+ 	data->vma_list = kmalloc(sizeof(struct list_head), GFP_KERNEL);
+ 	INIT_LIST_HEAD(data->vma_list);
+ 	vma_list = data->vma_list;
+-	
++
+ 	data->isAllocated = 1;
+ 
+ 	return 0;
+@@ -175,15 +175,15 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 	struct vm_area_struct *new_vma;
+ 	unsigned long ret_addr, offset, addr;
+ 
+-	vma_prot = PROT_READ | PROT_WRITE; 
+-	vma_flags = MAP_SHARED;	
+-	//vma_prot = 0;
++	vma_prot = PROT_READ | PROT_WRITE;
++	vma_flags = MAP_SHARED;
+ 
+ 	offset = 0;
+ 	addr = 0;
+ 	new_vma = NULL;
+ 	down_write(&current->mm->mmap_sem);
+-	printk(KERN_DEBUG "size: %d\nprot: %d\nflags: %d\n", size, vma_prot, vma_flags);
++	printk(KERN_DEBUG "size: %d\nprot: %d\nflags: %d\n", size, vma_prot,
++			vma_flags);
+ 	ret_addr = do_mmap(NULL, addr, size, vma_prot, vma_flags, offset);
+ 	printk(KERN_DEBUG "Memory mapped to: %d\n", ret_addr);
+ 
+@@ -201,8 +201,8 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		return -EINVAL;
+ 	} else {
+ 		printk(KERN_DEBUG "Found VMA.\n");
+-		//INIT_LIST_HEAD(&new_vma->ssmem_node);
+-		//list_add(&new_vma->ssmem_node, vma_list);
++		INIT_LIST_HEAD(&new_vma->ssmem_node);
++		list_add(&new_vma->ssmem_node, vma_list);
+ 		spin_unlock(&current->mm->page_table_lock);
+ 		up_write(&current->mm->mmap_sem);
+ 		return ret_addr;
+@@ -216,7 +216,8 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 	int vma_flags;
+ 	unsigned long ret_addr;
+ 
+-	printk(KERN_DEBUG "id = %d, flags = %d, length = %d\n", id, flags, length);
++	printk(KERN_DEBUG "id = %d, flags = %d, length = %d\n", id, flags,
++			length);
+ 
+ 	/* This to to stop possible race conditions the first time that the
+ 	 * function is called before locks are initialized.
+@@ -232,7 +233,7 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 
+ 	printk(KERN_DEBUG "Entering Error Check.\n");
+ 	/* Error Check */
+-	if (id < 0 || id > SSMEM_MAX - 1){
++	if (id < 0 || id > SSMEM_MAX - 1) {
+ 		printk(KERN_DEBUG "ERROR: id= %d\n", id);
+ 		return (void *)-EINVAL;
+ 	} else {
+@@ -296,5 +297,4 @@ struct vm_operations_struct ssmem_vm_ops = {
+ */
+ asmlinkage int ssmem_detach(void *addr)
+ {
+-  
+ }
+-- 
+1.7.9.5
+
+
+From 13d22ecf5f850d7561500b37c6572c40f0f885c1 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Sun, 14 Apr 2013 20:26:14 -0400
+Subject: [PATCH 21/61] -was keeping track of the number of mappers.
+
+---
+ mm/ssmem.c |    2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 665d3e1..10ef19e 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -262,6 +262,7 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 				printk(KERN_DEBUG "Created ssmem.\n");
+ 				ret_addr = mmap_attach(vma_prot, vma_flags,
+ 					data[id].length, data[id].vma_list);
++				data[id].numOfMappers++;
+ 				up(&data[id].lock);
+ 				return (void *)ret_addr;
+ 			}
+@@ -276,6 +277,7 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 			} else { /* is allocated */
+ 				ret_addr = mmap_attach(vma_prot, vma_flags,
+ 					data[id].length, data[id].vma_list);
++				data[id].numOfMappers++;
+ 				up(&data[id].lock);
+ 				return (void *)ret_addr;
+ 			}
+-- 
+1.7.9.5
+
+
+From 553905b5947c6632b5751ed81e3641ed3386474f Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Mon, 15 Apr 2013 22:49:46 -0400
+Subject: [PATCH 22/61] -wrote function to get the ssmem_data structur where
+ an address is mapped.
+
+---
+ mm/ssmem.c |   37 +++++++++++++++++++++++++++++++++++++
+ 1 file changed, 37 insertions(+)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index ffaa698..55e250f 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -289,9 +289,46 @@ struct vm_operations_struct ssmem_vm_ops = {
+ 	.access = ssmem_access,
+ };
+ 
++/**
++ * Iterates through the arra of ssmem_data structure and each vma in the list
++ * and will return the vm_area_struct.
++ */
++struct ssmem_data *get_attached_vma_segment(unsigned long addr)
++{
++	int i;
++	struct vm_area_struct *test_vma, *curr_vma;
++	struct ssmem_data *ret_data;
++	ret_data = NULL;
++	spin_lock(current->mm->page_table_lock);
++	test_vma = find_vma(current->mm, addr);
++	if (!test_vma)
++		goto clean_and_return;
++	for (i = 0; i < SSMEM_MAX; i++) {
++		if (ret_data)
++			goto clean_and_return;
++		if (data[i].isAllocated) {
++			list_for_each_entry(curr_vma, data[i].vma_list,
++					ssmem_node) {
++				if (curr_vma == test_vma)
++					ret_data = &data[i];
++			}
++		}
++	}
++
++clean_and_return:
++		spin_unlock(current->mm->page_table_lock);
++		return ret_data;
++}
++
+ /*
+ * Detach
+ */
+ asmlinkage int ssmem_detach(void *addr)
+ {
++	unsigned long long_addr;
++	struct ssmem_data *mem_segment;
++	long_addr = (unsigned long) addr;
++	mem_segment = get_attached_vma_segment(long_addr);
++	if (!mem_segment)
++		return -EFAULT;
+ }
+-- 
+1.7.9.5
+
+
+From d143e44b8b33e59b4cc19320b58e7caed78cf1c7 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Mon, 15 Apr 2013 23:21:25 -0400
+Subject: [PATCH 23/61] -added debug statements to get ssmem_data function.
+
+---
+ mm/ssmem.c |   17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 55e250f..9b69bbc 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -304,18 +304,23 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 	if (!test_vma)
+ 		goto clean_and_return;
+ 	for (i = 0; i < SSMEM_MAX; i++) {
+-		if (ret_data)
++		printk("Testing: %d, isAllocated = %d\n", i, data[i].isAllocated);
++		if (ret_data) {
++			printk(KERN_DEBUG "ret_data is cool.\n");
+ 			goto clean_and_return;
++		}
+ 		if (data[i].isAllocated) {
+ 			list_for_each_entry(curr_vma, data[i].vma_list,
+ 					ssmem_node) {
+-				if (curr_vma == test_vma)
++				if (curr_vma == test_vma) {
+ 					ret_data = &data[i];
++				}
+ 			}
+ 		}
+ 	}
+ 
+ clean_and_return:
++		printk(KERN_DEBUG "Cleaning and returning.\n");
+ 		spin_unlock(current->mm->page_table_lock);
+ 		return ret_data;
+ }
+@@ -329,6 +334,12 @@ asmlinkage int ssmem_detach(void *addr)
+ 	struct ssmem_data *mem_segment;
+ 	long_addr = (unsigned long) addr;
+ 	mem_segment = get_attached_vma_segment(long_addr);
+-	if (!mem_segment)
++	printk("mem_segment = %p\n", mem_segment);
++	if (!mem_segment) {
++		printk(KERN_DEBUG "Failed to find mem_segment.\n");
+ 		return -EFAULT;
++	} else {
++		
++		return 1;
++	}
+ }
+-- 
+1.7.9.5
+
+
+From f5f0e72d80120e7216779e1d1670e8205e729d7e Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 16 Apr 2013 09:55:12 -0400
+Subject: [PATCH 24/61] -refactored out the goto statement.
+
+---
+ mm/ssmem.c |   20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 9b69bbc..8770b1b 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -290,8 +290,7 @@ struct vm_operations_struct ssmem_vm_ops = {
+ };
+ 
+ /**
+- * Iterates through the arra of ssmem_data structure and each vma in the list
+- * and will return the vm_area_struct.
++ * Returns the ssme
+  */
+ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ {
+@@ -301,13 +300,15 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 	ret_data = NULL;
+ 	spin_lock(current->mm->page_table_lock);
+ 	test_vma = find_vma(current->mm, addr);
+-	if (!test_vma)
+-		goto clean_and_return;
+-	for (i = 0; i < SSMEM_MAX; i++) {
++	if (test_vma != NULL)
++		i = SSMEM_MAX;
++	else
++		i = 0;
++	for (; i < SSMEM_MAX; i++) {
+ 		printk("Testing: %d, isAllocated = %d\n", i, data[i].isAllocated);
+ 		if (ret_data) {
+ 			printk(KERN_DEBUG "ret_data is cool.\n");
+-			goto clean_and_return;
++			break;
+ 		}
+ 		if (data[i].isAllocated) {
+ 			list_for_each_entry(curr_vma, data[i].vma_list,
+@@ -319,10 +320,9 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 		}
+ 	}
+ 
+-clean_and_return:
+-		printk(KERN_DEBUG "Cleaning and returning.\n");
+-		spin_unlock(current->mm->page_table_lock);
+-		return ret_data;
++	printk(KERN_DEBUG "Cleaning and returning.\n");
++	spin_unlock(current->mm->page_table_lock);
++	return ret_data;
+ }
+ 
+ /*
+-- 
+1.7.9.5
+
+
+From 7e42d011f0c0de4770cbbd3c3d062ac772dad001 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 16 Apr 2013 10:14:22 -0400
+Subject: [PATCH 25/61] -added functionality to munmap the virtual address.
+
+---
+ mm/ssmem.c |   50 ++++++++++++++++++++++++++++++++++++++++++++------
+ 1 file changed, 44 insertions(+), 6 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 8770b1b..3cf15a9 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -305,19 +305,19 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 	else
+ 		i = 0;
+ 	for (; i < SSMEM_MAX; i++) {
+-		printk("Testing: %d, isAllocated = %d\n", i, data[i].isAllocated);
+ 		if (ret_data) {
+ 			printk(KERN_DEBUG "ret_data is cool.\n");
+ 			break;
+ 		}
++		down(&data[i].lock);
+ 		if (data[i].isAllocated) {
+ 			list_for_each_entry(curr_vma, data[i].vma_list,
+ 					ssmem_node) {
+-				if (curr_vma == test_vma) {
++				if (curr_vma == test_vma)
+ 					ret_data = &data[i];
+-				}
+ 			}
+ 		}
++		up(&data[i].lock);
+ 	}
+ 
+ 	printk(KERN_DEBUG "Cleaning and returning.\n");
+@@ -326,20 +326,58 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ }
+ 
+ /*
++ * TODO
++ * Must be called while holding the ssmem_data.lock.
++ */
++int clean_up_ssmem_struct(struct ssmem_data *mem_segment)
++{
++	/*
++	 * We can use this function to clean up an ssmem_data structure.
++	 */
++	return 0;
++}
++
++/*
+ * Detach
+ */
+ asmlinkage int ssmem_detach(void *addr)
+ {
++	int return_value;
+ 	unsigned long long_addr;
+ 	struct ssmem_data *mem_segment;
++	struct vm_area_struct *vma_to_remove;
++
++	return_value = 0;
+ 	long_addr = (unsigned long) addr;
+ 	mem_segment = get_attached_vma_segment(long_addr);
+-	printk("mem_segment = %p\n", mem_segment);
++	printk(KERN_DEBUG "mem_segment = %p\n", mem_segment);
+ 	if (!mem_segment) {
+ 		printk(KERN_DEBUG "Failed to find mem_segment.\n");
+ 		return -EFAULT;
+ 	} else {
+-		
+-		return 1;
++		down(&mem_segment->lock);
++		spin_lock(current->mm->page_table_lock);
++		/* Removed the current vma from the list. */
++		vma_to_remove = find_vma(current->mm, long_addr);
++
++		if (vma_to_remove != NULL) {
++			/* Munmap the memory area. */
++			if (do_munmap(current->mm, long_addr,
++						mem_segment->length)) {
++				printk(KERN_DEBUG "Failed to munmap.\n");
++				return_value = -EFAULT;
++			} else {
++				/* Decrement the number of mappers. */
++				mem_segment->length--;
++				if (mem_segment > 0) {
++					printk(KERN_DEBUG "Cleaning up seg\n");
++					clean_up_ssmem_struct(mem_segment);
++				}
++
++			}
++		}
++		spin_unlock(current->mm->page_table_lock);
++		up(&mem_segment->lock);
++		return return_value;;
+ 	}
+ }
+-- 
+1.7.9.5
+
+
+From 904bfee72cf310498a89a2e92a2af2d818862779 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Tue, 16 Apr 2013 10:35:15 -0400
+Subject: [PATCH 26/61] -corrected logic error that would return if vma was
+ found. -added deleting vma from the list.
+
+---
+ mm/ssmem.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 3cf15a9..0d282b5 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -301,9 +301,9 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 	spin_lock(current->mm->page_table_lock);
+ 	test_vma = find_vma(current->mm, addr);
+ 	if (test_vma != NULL)
+-		i = SSMEM_MAX;
+-	else
+ 		i = 0;
++	else
++		i = SSMEM_MAX;
+ 	for (; i < SSMEM_MAX; i++) {
+ 		if (ret_data) {
+ 			printk(KERN_DEBUG "ret_data is cool.\n");
+@@ -369,6 +369,7 @@ asmlinkage int ssmem_detach(void *addr)
+ 			} else {
+ 				/* Decrement the number of mappers. */
+ 				mem_segment->length--;
++				list_del(&vma_to_remove->ssmem_node);
+ 				if (mem_segment > 0) {
+ 					printk(KERN_DEBUG "Cleaning up seg\n");
+ 					clean_up_ssmem_struct(mem_segment);
+-- 
+1.7.9.5
+
+
+From 72a2d093cd35b34d5a219742d3cc4bdc7d5e0b7e Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 16 Apr 2013 10:37:03 -0400
+Subject: [PATCH 27/61] -isAllocated gets changed to zero.
+
+---
+ mm/ssmem.c |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 3cf15a9..3043567 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -334,6 +334,7 @@ int clean_up_ssmem_struct(struct ssmem_data *mem_segment)
+ 	/*
+ 	 * We can use this function to clean up an ssmem_data structure.
+ 	 */
++	mem_segment->isAllocated = 0;
+ 	return 0;
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 0d47879eb4758b4b9716e3e4aa141e738be0a265 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Tue, 16 Apr 2013 19:54:20 -0400
+Subject: [PATCH 28/61] -added documentation to ssmmem.c
+
+---
+ mm/ssmem.c |   17 ++++++++++++++---
+ 1 file changed, 14 insertions(+), 3 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 92bec50..9960e91 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -237,6 +237,7 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 		printk(KERN_DEBUG "ERROR: id= %d\n", id);
+ 		return (void *)-EINVAL;
+ 	} else {
++		/* Attach and create. */
+ 		printk(KERN_DEBUG "No id ERROR. flags = %d\n", flags);
+ 		down(&data[id].lock);
+ 		if (flags & SSMEM_FLAG_CREATE) { /*Create */
+@@ -262,8 +263,8 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 			printk(KERN_DEBUG "Returning from attach.\n");
+ 			return (void *)ret_addr;
+ 		} else{
+-			printk(KERN_DEBUG "attach but don't create\n");
+ 			/*attach but don't create*/
++			printk(KERN_DEBUG "attach but don't create\n");
+ 			if (data[id].isAllocated == 0) {
+ 				printk(KERN_DEBUG "Can't attach.  Not created.\n");
+ 				up(&data[id].lock);
+@@ -290,7 +291,8 @@ struct vm_operations_struct ssmem_vm_ops = {
+ };
+ 
+ /**
+- * Returns the ssme
++ * Returnst a pointer to the ssmem_data structure associated with the address
++ * passed in as a parameter and NULL if it cannot be found.
+  */
+ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ {
+@@ -300,10 +302,14 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 	ret_data = NULL;
+ 	spin_lock(current->mm->page_table_lock);
+ 	test_vma = find_vma(current->mm, addr);
++
++	/* If the VMA isn't found then skip searching through the segments. */
+ 	if (test_vma != NULL)
+ 		i = 0;
+ 	else
+ 		i = SSMEM_MAX;
++
++	/* Cycle through all of the ssmem segments. */
+ 	for (; i < SSMEM_MAX; i++) {
+ 		if (ret_data) {
+ 			printk(KERN_DEBUG "ret_data is cool.\n");
+@@ -311,6 +317,10 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 		}
+ 		down(&data[i].lock);
+ 		if (data[i].isAllocated) {
++			/* 
++			 * Search through the list of VMAs for the vma
++			 * associated with the address.
++			 */
+ 			list_for_each_entry(curr_vma, data[i].vma_list,
+ 					ssmem_node) {
+ 				if (curr_vma == test_vma)
+@@ -339,7 +349,8 @@ int clean_up_ssmem_struct(struct ssmem_data *mem_segment)
+ }
+ 
+ /*
+-* Detach
++* Detaches from the shared memory segment at the address specified.  Returns
++* 0 on success or -EFAULT.
+ */
+ asmlinkage int ssmem_detach(void *addr)
+ {
+-- 
+1.7.9.5
+
+
+From 13cd91f72c8982ae02ca076f0414cf8f0b48478e Mon Sep 17 00:00:00 2001
+From: Karan Uppal <ku2138@columbia.edu>
+Date: Wed, 17 Apr 2013 01:22:35 -0400
+Subject: [PATCH 29/61] page fault handler
+
+---
+ mm/ssmem.c |   87 ++++++++++++++++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 76 insertions(+), 11 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 96a9b01..c4bcec9 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -6,6 +6,7 @@
+ #include <linux/rmap.h>
+ #include <asm/page.h>
+ #include <asm/pgtable.h>
++#include <linux/pagemap.h>
+ 
+ #define SSMEM_MAX 1024
+ #define SSMEM_FLAG_CREATE 0x1
+@@ -25,7 +26,8 @@ struct ssmem_data {
+ 	unsigned int pagecount;
+ 	int numOfMappers;
+ 	struct anon_vma *listOfMappers;
+-	struct page *listOfPages;
++	struct page **listOfPages;
++	int flags;
+ 
+ 	/* Too bad this can't be statically declared. */
+ 	struct semaphore lock;
+@@ -50,19 +52,74 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ {
+ 	/* Allocate a page */
+ 	gfp_t gfp_mask = GFP_USER;
++	struct page *page;
++	struct ssmem_data *data;
++	pgprot_t prot;
++	unsigned long *v_addr = (unsigned long*) vmf->virtual_address;
++	int addr;
++	spinlock_t *ptl_tmp; 
++	spinlock_t **ptl; 
++	pte_t pte;
++	int flags;
++	pte_t *ptep;
+ 
+-	pte_t *pte;
++	ptl_tmp = &(area->vm_mm->page_table_lock);
+ 
+-	/* Order 0 for one page */
+-	struct page *pages = alloc_pages(gfp_mask, 0);
+-	if (!(vmf->flags & VM_FAULT_NOPAGE) && !(vmf->flags & VM_FAULT_ERROR))
+-		vmf->page = pages;
++	ptl = &ptl_tmp;
+ 
+-	/* Update ssmem_data here */
+-	spin_lock(&area->vm_mm->page_table_lock);
++	ptep = get_locked_pte(area->vm_mm, *v_addr, ptl);
+ 
+-	/* Add page to page table for the process */
+-	spin_unlock(&area->vm_mm->page_table_lock);
++	pte = *ptep;
++
++	addr = pte_val(pte);
++
++	up(&big_ssmem_lock);
++
++	data = (struct ssmem_data *)area->vm_private_data;
++
++	flags = data->flags;
++
++	if(data->listOfPages[addr]!=NULL){/*page exists*/
++
++		page = data->listOfPages[addr];
++		down(&big_ssmem_lock);
++		lock_page(page);
++		get_page(page); /*increments count*/
++		atomic_inc(&page->_mapcount);
++		unlock_page(page);
++
++	}
++	else{/*alloc new page*/
++
++		page = alloc_pages(gfp_mask, 0);
++		
++		up(&big_ssmem_lock);
++		data->listOfPages[addr] = page;
++		down(&big_ssmem_lock);
++
++		lock_page(page);
++		get_page(page); /*increments count*/
++		atomic_inc(&page->_mapcount);
++		unlock_page(page);
++	}
++
++
++	if(flags & SSMEM_FLAG_WRITE)
++		prot.pgprot = SSMEM_FLAG_WRITE;
++
++	if(flags & SSMEM_FLAG_EXEC)
++		prot.pgprot = SSMEM_FLAG_EXEC;
++
++	/*mk pte*/
++	pte = mk_pte(page, prot);
++
++	/*set pte*/
++	set_pte_vaddr(*v_addr, pte);
++
++
++	/*Don't return a page add to page table manually*/
++	vmf->flags = VM_FAULT_NOPAGE;
++		
+ 
+ 	return -1;
+ }
+@@ -98,16 +155,24 @@ unsigned int pages_from_bytes(size_t length)
+  *
+  * NOTE: This does not handle vmas and anon_vmas
+  */
+-unsigned int ssmem_create(struct ssmem_data *data, int flags, size_t length)
++unsigned int ssmem_create(struct ssmem_data *data, 
++	int flags, size_t length)
+ {
+ 	unsigned int page_count;
++	int i;
+ 
+ 	if (data->isAllocated)
+ 		return 0;
+ 	/* Calculate the number of pages and allocate them. */
+ 	page_count = pages_from_bytes(length);
++	data->listOfPages = kmalloc(sizeof(data->listOfPages)*page_count, 
++		GFP_ATOMIC);
++	
++	for(i=0; i<page_count; i++)
++		data->listOfPages[i]=NULL;
+ 	data->pagecount = page_count;
+ 	data->isAllocated = 1;
++	data->flags = flags;
+ 
+ 	return 0;
+ }
+-- 
+1.7.9.5
+
+
+From 282e806b3bd2b33931eafb56b3f6adcb407448bf Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Wed, 17 Apr 2013 09:43:03 -0400
+Subject: [PATCH 30/61] -added vm_area_struct.vm_private_data to point to the
+ current ssmem_data struct.
+
+---
+ mm/ssmem.c |   11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 9960e91..55414f2 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -172,7 +172,7 @@ int get_vma_flags(int input_flags)
+  * size - the size of the memory segment.
+  */
+ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+-		struct list_head *vma_list)
++		struct list_head *vma_list, struct ssmem_data *ssmem)
+ {
+ 	struct vm_area_struct *new_vma;
+ 	unsigned long ret_addr, offset, addr;
+@@ -202,6 +202,7 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		printk(KERN_DEBUG "Found VMA.\n");
+ 		INIT_LIST_HEAD(&new_vma->ssmem_node);
+ 		list_add(&new_vma->ssmem_node, vma_list);
++		new_vma->vm_private_data = ssmem;
+ 		spin_unlock(&current->mm->page_table_lock);
+ 		up_write(&current->mm->mmap_sem);
+ 		printk(KERN_DEBUG "VMA inserted into list.\n");
+@@ -258,7 +259,8 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 			}
+ 			printk(KERN_DEBUG "Created ssmem.\n");
+ 			ret_addr = mmap_attach(vma_prot, vma_flags,
+-				data[id].length, data[id].vma_list);
++				data[id].length, data[id].vma_list, &data[id]);
++			data[id].numOfMappers++;
+ 			up(&data[id].lock);
+ 			printk(KERN_DEBUG "Returning from attach.\n");
+ 			return (void *)ret_addr;
+@@ -271,7 +273,8 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 				return (void *) -EADDRNOTAVAIL;
+ 			} else { /* is allocated */
+ 				ret_addr = mmap_attach(vma_prot, vma_flags,
+-					data[id].length, data[id].vma_list);
++					data[id].length, data[id].vma_list,
++					&data[id]);
+ 				data[id].numOfMappers++;
+ 				up(&data[id].lock);
+ 				printk(KERN_DEBUG "Returning from attach.\n");
+@@ -317,7 +320,7 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 		}
+ 		down(&data[i].lock);
+ 		if (data[i].isAllocated) {
+-			/* 
++			/*
+ 			 * Search through the list of VMAs for the vma
+ 			 * associated with the address.
+ 			 */
+-- 
+1.7.9.5
+
+
+From ee3f511ac9176ccdf8e0616648e4a03210903c79 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 13:45:40 -0400
+Subject: [PATCH 31/61] -corrected premature detachment.
+
+---
+ mm/ssmem.c |   10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 317fcf4..45da9c4 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -381,7 +381,7 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 	/* Cycle through all of the ssmem segments. */
+ 	for (; i < SSMEM_MAX; i++) {
+ 		if (ret_data) {
+-			printk(KERN_DEBUG "ret_data is cool.\n");
++			printk(KERN_DEBUG "correct ssmem found.\n");
+ 			break;
+ 		}
+ 		down(&data[i].lock);
+@@ -449,9 +449,11 @@ asmlinkage int ssmem_detach(void *addr)
+ 				return_value = -EFAULT;
+ 			} else {
+ 				/* Decrement the number of mappers. */
+-				mem_segment->length--;
++				mem_segment->numOfMappers--;
+ 				list_del(&vma_to_remove->ssmem_node);
+-				if (mem_segment > 0) {
++
++				/* If no more attached procs clean up. */
++				if (mem_segment->numOfMappers == 0) {
+ 					printk(KERN_DEBUG "Cleaning up seg\n");
+ 					clean_up_ssmem_struct(mem_segment);
+ 				}
+@@ -460,6 +462,6 @@ asmlinkage int ssmem_detach(void *addr)
+ 		}
+ 		spin_unlock(current->mm->page_table_lock);
+ 		up(&mem_segment->lock);
+-		return return_value;;
++		return return_value;
+ 	}
+ }
+-- 
+1.7.9.5
+
+
+From de5d764d81d75cebb415b580e9bdac1afa4e5e80 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 14:59:29 -0400
+Subject: [PATCH 32/61] -moved ssmem_vm_ops to early in the file. -added debug
+ statements to each of the ssmem_vm_ops functions.
+
+---
+ mm/ssmem.c |   29 +++++++++++++++++++----------
+ 1 file changed, 19 insertions(+), 10 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 45da9c4..0b15790 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -42,15 +42,19 @@ static void ssmem_open(struct vm_area_struct *area)
+ 	 * called when copying or splitting a vma.  Do we have anything special
+ 	 * to do when we copy or split a vma?
+ 	 */
++	printk(KERN_DEBUG "\t>>ssmem_open\n");
+ }
+ 
+ static void ssmem_close(struct vm_area_struct *area)
+ {
+ 
++	printk(KERN_DEBUG "\t>>ssmem_close\n");
+ }
+ 
+ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ {
++	printk(KERN_DEBUG "\t>>ssmem_fault\n");
++	printk(KERN_DEBUG "Handling Fault.\n");
+ 	/* Allocate a page */
+ 	gfp_t gfp_mask = GFP_USER;
+ 	struct page *page;
+@@ -81,7 +85,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	flags = data->flags;
+ 
+ 	if(data->listOfPages[addr]!=NULL){/*page exists*/
+-
++		printk(KERN_DEBUG "PAGE EXISTS.\n");
+ 		page = data->listOfPages[addr];
+ 		down(&big_ssmem_lock);
+ 		lock_page(page);
+@@ -91,6 +95,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 	}
+ 	else{/*allocate new page*/
++		printk(KERN_DEBUG "ALLOCATE NEW PAGE.\n");
+ 
+ 		page = alloc_pages(gfp_mask, 0);
+ 		
+@@ -122,21 +127,31 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	vmf->flags = VM_FAULT_NOPAGE;
+ 		
+ 
+-	return -1;
++	//return -1;
++	return VM_FAULT_NOPAGE;
+ }
+ 
+ static int ssmem_page_mkwrite(struct vm_area_struct *area,
+ 		struct page *pg)
+ {
++	printk(KERN_DEBUG "\t>>ssmem_page_mkwrite.\n");
+ 	return -1;
+ }
+ 
+ static int ssmem_access(struct vm_area_struct *area, unsigned long address,
+ 		void *buf, int len, int write)
+ {
++	printk(KERN_DEBUG "\t>>ssmem_access.\n");
+ 	return -1;
+ }
+ 
++struct vm_operations_struct ssmem_vm_ops = {
++	.open = ssmem_open,
++	.close = ssmem_close,
++	.fault = ssmem_fault,
++	.page_mkwrite = ssmem_page_mkwrite,
++	.access = ssmem_access,
++};
+ /*
+  * Calculates the number of pages required to accomadate memory of size length
+  * bytes.
+@@ -269,6 +284,8 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		INIT_LIST_HEAD(&new_vma->ssmem_node);
+ 		list_add(&new_vma->ssmem_node, vma_list);
+ 		new_vma->vm_private_data = ssmem;
++		new_vma->vm_ops = &ssmem_vm_ops;
++		printk(KERN_DEBUG "VM_OPs assigned.\n");
+ 		spin_unlock(&current->mm->page_table_lock);
+ 		up_write(&current->mm->mmap_sem);
+ 		printk(KERN_DEBUG "VMA inserted into list.\n");
+@@ -351,14 +368,6 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ }
+ 
+ 
+-struct vm_operations_struct ssmem_vm_ops = {
+-	.open = ssmem_open,
+-	.close = ssmem_close,
+-	.fault = ssmem_fault,
+-	.page_mkwrite = ssmem_page_mkwrite,
+-	.access = ssmem_access,
+-};
+-
+ /**
+  * Returnst a pointer to the ssmem_data structure associated with the address
+  * passed in as a parameter and NULL if it cannot be found.
+-- 
+1.7.9.5
+
+
+From 8b285be648cf43337c80c7973f26f9c82ca341dd Mon Sep 17 00:00:00 2001
+From: Karan Uppal <ku2138@columbia.edu>
+Date: Wed, 17 Apr 2013 15:00:15 -0400
+Subject: [PATCH 33/61] page fault handler fixed
+
+---
+ mm/ssmem.c |   15 ++++++++-------
+ 1 file changed, 8 insertions(+), 7 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 317fcf4..c7a13cd 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -52,7 +52,7 @@ static void ssmem_close(struct vm_area_struct *area)
+ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ {
+ 	/* Allocate a page */
+-	gfp_t gfp_mask = GFP_USER;
++	gfp_t gfp_mask = GFP_ATOMIC;
+ 	struct page *page;
+ 	struct ssmem_data *data;
+ 	pgprot_t prot;
+@@ -72,7 +72,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 	pte = *ptep;
+ 
+-	addr = pte_val(pte);
++	addr = (*v_addr - area->vm_start)/PAGE_SIZE;
+ 
+ 	up(&big_ssmem_lock);
+ 
+@@ -84,6 +84,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 		page = data->listOfPages[addr];
+ 		down(&big_ssmem_lock);
++
+ 		lock_page(page);
+ 		get_page(page); /*increments count*/
+ 		atomic_inc(&page->_mapcount);
+@@ -106,10 +107,10 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 
+ 	if(flags & SSMEM_FLAG_WRITE)
+-		prot.pgprot = SSMEM_FLAG_WRITE;
++		prot.pgprot = prot.pgprot | VM_WRITE;
+ 
+ 	if(flags & SSMEM_FLAG_EXEC)
+-		prot.pgprot = SSMEM_FLAG_EXEC;
++		prot.pgprot = prot.pgprot | VM_EXEC;
+ 
+ 	/*mk pte*/
+ 	pte = mk_pte(page, prot);
+@@ -122,19 +123,19 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	vmf->flags = VM_FAULT_NOPAGE;
+ 		
+ 
+-	return -1;
++	return 0;
+ }
+ 
+ static int ssmem_page_mkwrite(struct vm_area_struct *area,
+ 		struct page *pg)
+ {
+-	return -1;
++	return 0;
+ }
+ 
+ static int ssmem_access(struct vm_area_struct *area, unsigned long address,
+ 		void *buf, int len, int write)
+ {
+-	return -1;
++	return 0;
+ }
+ 
+ /*
+-- 
+1.7.9.5
+
+
+From 624605b28a71a54127da20f79f706bbd0005c765 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 15:44:06 -0400
+Subject: [PATCH 34/61] -removed map_locked flag.
+
+---
+ mm/mmap.c  |    1 +
+ mm/ssmem.c |    7 ++++---
+ 2 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/mm/mmap.c b/mm/mmap.c
+index e891388..270f0d6 100644
+--- a/mm/mmap.c
++++ b/mm/mmap.c
+@@ -1203,6 +1203,7 @@ munmap_back:
+ 		if (vm_flags & VM_EXECUTABLE)
+ 			added_exe_file_vma(mm);
+ 	} else if (vm_flags & VM_SHARED) {
++		printk(KERN_DEBUG "\t>>>>>MAPPING SHMEM_ZERO <<<\n");
+ 		error = shmem_zero_setup(vma);
+ 		if (error)
+ 			goto free_vma;
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 44842c0..402d9d8 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -242,7 +242,8 @@ int get_vma_prot(int input_flags)
+ int get_vma_flags(int input_flags)
+ {
+ 	int vma_flags;
+-	vma_flags = MAP_SHARED | MAP_LOCKED;
++	//vma_flags = MAP_SHARED | MAP_LOCKED | MAP_ANONYMOUS;
++	vma_flags = MAP_SHARED | MAP_ANONYMOUS;
+ 	return vma_flags;
+ }
+ 
+@@ -256,8 +257,7 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		struct list_head *vma_list, struct ssmem_data *ssmem)
+ {
+ 	struct vm_area_struct *new_vma;
+-	unsigned long ret_addr, offset, addr;
+-
++	unsigned long ret_addr, offset, addr; 
+ 	offset = 0;
+ 	addr = 0;
+ 	new_vma = NULL;
+@@ -286,6 +286,7 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		new_vma->vm_private_data = ssmem;
+ 		new_vma->vm_ops = &ssmem_vm_ops;
+ 		printk(KERN_DEBUG "VM_OPs assigned.\n");
++		printk(KERN_DEBUG "length = %lu\n", new_vma->vm_end - new_vma->vm_start);
+ 		spin_unlock(&current->mm->page_table_lock);
+ 		up_write(&current->mm->mmap_sem);
+ 		printk(KERN_DEBUG "VMA inserted into list.\n");
+-- 
+1.7.9.5
+
+
+From 17686b1c774750489529a55266e9245d6e9d821a Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Wed, 17 Apr 2013 15:47:44 -0400
+Subject: [PATCH 35/61] -corrected comment for get_vma_flags.
+
+---
+ mm/ssmem.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 44842c0..a4c8d7c 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -236,8 +236,8 @@ int get_vma_prot(int input_flags)
+ /*
+  * Returns the flags for the new mmaped vma.
+  * Does not need to be an entire function now but may be useful later.
+- * VM_SHARED - note that the memory is shared.
+- * VM_RESERVED - note that the memory should not be swapped out.
++ * MAP_SHARED - note that the memory is shared.
++ * MAP_LOCKED - note that the memory should not be swapped out.
+  */
+ int get_vma_flags(int input_flags)
+ {
+-- 
+1.7.9.5
+
+
+From 3ebd42cf5e586dc433b40583bca429027e9acb4d Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 16:33:31 -0400
+Subject: [PATCH 36/61] -debugging fault handler.
+
+---
+ mm/ssmem.c |   15 +++++++--------
+ 1 file changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 402d9d8..9e56b84 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -64,7 +64,6 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	int addr;
+ 	spinlock_t *ptl_tmp; 
+ 	spinlock_t **ptl; 
+-	pte_t pte;
+ 	int flags;
+ 	pte_t *ptep;
+ 
+@@ -72,9 +71,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 	ptl = &ptl_tmp;
+ 
+-	ptep = get_locked_pte(area->vm_mm, *v_addr, ptl);
+-
+-	pte = *ptep;
++	//ptep = get_locked_pte(area->vm_mm, *v_addr, ptl);
+ 
+ 	addr = (*v_addr - area->vm_start)/PAGE_SIZE;
+ 
+@@ -83,8 +80,10 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	data = (struct ssmem_data *)area->vm_private_data;
+ 
+ 	flags = data->flags;
++	down(&big_ssmem_lock);	
+ 
+ 	if(data->listOfPages[addr]!=NULL){/*page exists*/
++		up(&big_ssmem_lock);
+ 		printk(KERN_DEBUG "PAGE EXISTS.\n");
+ 		page = data->listOfPages[addr];
+ 		down(&big_ssmem_lock);
+@@ -117,18 +116,18 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	if(flags & SSMEM_FLAG_EXEC)
+ 		prot.pgprot = prot.pgprot | VM_EXEC;
+ 
++
+ 	/*mk pte*/
+-	pte = mk_pte(page, prot);
++	*ptep = mk_pte(page, prot);
+ 
+ 	/*set pte*/
+-	set_pte_vaddr(*v_addr, pte);
++	set_pte_vaddr(*v_addr, *ptep);
+ 
+ 
+ 	/*Don't return a page add to page table manually*/
+ 	vmf->flags = VM_FAULT_NOPAGE;
+ 
+-	//return -1;
+-	return VM_FAULT_NOPAGE;
++	return 0;
+ }
+ 
+ static int ssmem_page_mkwrite(struct vm_area_struct *area,
+-- 
+1.7.9.5
+
+
+From 3c2c8a13b2a43adc91979c41ec060ca8c2bde9c8 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 18:13:45 -0400
+Subject: [PATCH 37/61] -debugging fault handler.
+
+---
+ mm/mmap.c  |    1 -
+ mm/ssmem.c |   48 +++++++++++++++++++++++++++---------------------
+ 2 files changed, 27 insertions(+), 22 deletions(-)
+
+diff --git a/mm/mmap.c b/mm/mmap.c
+index 270f0d6..e891388 100644
+--- a/mm/mmap.c
++++ b/mm/mmap.c
+@@ -1203,7 +1203,6 @@ munmap_back:
+ 		if (vm_flags & VM_EXECUTABLE)
+ 			added_exe_file_vma(mm);
+ 	} else if (vm_flags & VM_SHARED) {
+-		printk(KERN_DEBUG "\t>>>>>MAPPING SHMEM_ZERO <<<\n");
+ 		error = shmem_zero_setup(vma);
+ 		if (error)
+ 			goto free_vma;
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 9e56b84..f513ace 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -60,20 +60,20 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	struct page *page;
+ 	struct ssmem_data *data;
+ 	pgprot_t prot;
+-	unsigned long *v_addr = (unsigned long*) vmf->virtual_address;
++	unsigned long v_addr = (unsigned long) vmf->virtual_address;
+ 	int addr;
+ 	spinlock_t *ptl_tmp; 
+ 	spinlock_t **ptl; 
+ 	int flags;
+ 	pte_t *ptep;
+ 
++	addr = (v_addr - area->vm_start)/PAGE_SIZE;
++	printk(KERN_DEBUG "addr = %d\n", addr);
++
+ 	ptl_tmp = &(area->vm_mm->page_table_lock);
+ 
+ 	ptl = &ptl_tmp;
+ 
+-	//ptep = get_locked_pte(area->vm_mm, *v_addr, ptl);
+-
+-	addr = (*v_addr - area->vm_start)/PAGE_SIZE;
+ 
+ 	up(&big_ssmem_lock);
+ 
+@@ -83,31 +83,27 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	down(&big_ssmem_lock);	
+ 
+ 	if(data->listOfPages[addr]!=NULL){/*page exists*/
+-		up(&big_ssmem_lock);
+ 		printk(KERN_DEBUG "PAGE EXISTS.\n");
++		up(&big_ssmem_lock);
+ 		page = data->listOfPages[addr];
+ 		down(&big_ssmem_lock);
+ 
+-		lock_page(page);
+-		get_page(page); /*increments count*/
+-		atomic_inc(&page->_mapcount);
+-		unlock_page(page);
+-
++		
+ 	}
+ 	else{/*allocate new page*/
+ 		printk(KERN_DEBUG "ALLOCATE NEW PAGE.\n");
+ 
+-		page = alloc_pages(gfp_mask, 0);
+-		
++		page = alloc_page(gfp_mask);
++	
+ 		up(&big_ssmem_lock);
+ 		data->listOfPages[addr] = page;
+ 		down(&big_ssmem_lock);
+ 
+-		lock_page(page);
+-		get_page(page); /*increments count*/
+-		atomic_inc(&page->_mapcount);
+-		unlock_page(page);
+ 	}
++	lock_page(page);
++	get_page(page); /*increments count*/
++	atomic_inc(&page->_mapcount);
++	unlock_page(page);
+ 
+ 
+ 	if(flags & SSMEM_FLAG_WRITE)
+@@ -116,18 +112,28 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	if(flags & SSMEM_FLAG_EXEC)
+ 		prot.pgprot = prot.pgprot | VM_EXEC;
+ 
+-
++	ptep = get_locked_pte(area->vm_mm, v_addr, ptl);
++	if (ptep == NULL) {
++		printk(KERN_DEBUG "ptep is NULL.\n");
++		return -1;
++	}
+ 	/*mk pte*/
+ 	*ptep = mk_pte(page, prot);
+ 
+-	/*set pte*/
+-	set_pte_vaddr(*v_addr, *ptep);
+ 
++	/*set pte*/
++	//set_pte_vaddr(v_addr, *ptep);
++	set_pte(ptep, *ptep);
+ 
+ 	/*Don't return a page add to page table manually*/
+-	vmf->flags = VM_FAULT_NOPAGE;
++	vmf->flags = vmf->flags | VM_FAULT_NOPAGE;
+ 
+-	return 0;
++	printk(KERN_DEBUG "v_addr = %lu\n", v_addr);
++	printk(KERN_DEBUG "preparing to unlock.\n");
++	pte_unmap_unlock(*ptep, **ptl);
++	printk(KERN_DEBUG "finished unlock.\n");
++
++	return VM_FAULT_NOPAGE;
+ }
+ 
+ static int ssmem_page_mkwrite(struct vm_area_struct *area,
+-- 
+1.7.9.5
+
+
+From 77fcbcaeae91fbe328f2fb24ec23fc24e4cab201 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 18:20:24 -0400
+Subject: [PATCH 38/61] -debugging.
+
+---
+ mm/ssmem.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index f513ace..0dc913a 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -126,7 +126,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	set_pte(ptep, *ptep);
+ 
+ 	/*Don't return a page add to page table manually*/
+-	vmf->flags = vmf->flags | VM_FAULT_NOPAGE;
++	// vmf->flags = vmf->flags | VM_FAULT_NOPAGE;
+ 
+ 	printk(KERN_DEBUG "v_addr = %lu\n", v_addr);
+ 	printk(KERN_DEBUG "preparing to unlock.\n");
+-- 
+1.7.9.5
+
+
+From a9db3953e6583db4c4bf045b42cf64eecc0d06fc Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 18:32:38 -0400
+Subject: [PATCH 39/61] -successfully sharing memory.
+
+---
+ mm/ssmem.c |   20 +++++++-------------
+ 1 file changed, 7 insertions(+), 13 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 0dc913a..3a4e372 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -74,12 +74,8 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 	ptl = &ptl_tmp;
+ 
+-
+ 	up(&big_ssmem_lock);
+-
+ 	data = (struct ssmem_data *)area->vm_private_data;
+-
+-	flags = data->flags;
+ 	down(&big_ssmem_lock);	
+ 
+ 	if(data->listOfPages[addr]!=NULL){/*page exists*/
+@@ -106,31 +102,29 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	unlock_page(page);
+ 
+ 
+-	if(flags & SSMEM_FLAG_WRITE)
+-		prot.pgprot = prot.pgprot | VM_WRITE;
+-
+-	if(flags & SSMEM_FLAG_EXEC)
+-		prot.pgprot = prot.pgprot | VM_EXEC;
+-
+ 	ptep = get_locked_pte(area->vm_mm, v_addr, ptl);
+ 	if (ptep == NULL) {
+ 		printk(KERN_DEBUG "ptep is NULL.\n");
+ 		return -1;
+ 	}
+ 	/*mk pte*/
+-	*ptep = mk_pte(page, prot);
++	//*ptep = mk_pte(page, area->vm_page_prot);
++	pte_t entry;
++	entry = mk_pte(page, area->vm_page_prot);
+ 
+ 
+ 	/*set pte*/
+ 	//set_pte_vaddr(v_addr, *ptep);
+-	set_pte(ptep, *ptep);
++	//set_pte(ptep, *ptep);
++	set_pte_at(area->vm_mm, v_addr, ptep, entry);
++	update_mmu_cache(area, v_addr, entry);
+ 
+ 	/*Don't return a page add to page table manually*/
+ 	// vmf->flags = vmf->flags | VM_FAULT_NOPAGE;
+ 
+ 	printk(KERN_DEBUG "v_addr = %lu\n", v_addr);
+ 	printk(KERN_DEBUG "preparing to unlock.\n");
+-	pte_unmap_unlock(*ptep, **ptl);
++	pte_unmap_unlock(ptep, *ptl);
+ 	printk(KERN_DEBUG "finished unlock.\n");
+ 
+ 	return VM_FAULT_NOPAGE;
+-- 
+1.7.9.5
+
+
+From 99a28e05ebecf91cabd919be65a6f723e16a8205 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 18:48:18 -0400
+Subject: [PATCH 40/61] -apparently working.
+
+---
+ mm/ssmem.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 3a4e372..0caeffc 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -116,11 +116,13 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	/*set pte*/
+ 	//set_pte_vaddr(v_addr, *ptep);
+ 	//set_pte(ptep, *ptep);
++	
+ 	set_pte_at(area->vm_mm, v_addr, ptep, entry);
+ 	update_mmu_cache(area, v_addr, entry);
++	inc_mm_counter(area->vm_mm, anon_rss);
++	page_cache_release(page);
++	page_add_anon_rmap(page, area, v_addr);
+ 
+-	/*Don't return a page add to page table manually*/
+-	// vmf->flags = vmf->flags | VM_FAULT_NOPAGE;
+ 
+ 	printk(KERN_DEBUG "v_addr = %lu\n", v_addr);
+ 	printk(KERN_DEBUG "preparing to unlock.\n");
+-- 
+1.7.9.5
+
+
+From 812979762b4aa6bef79a24e22ebd7effdb4f4a9f Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Wed, 17 Apr 2013 22:13:11 -0400
+Subject: [PATCH 41/61] -added mlock_vma_page(page) to make page unevictable. 
+ It was mentioned on piazza.
+
+---
+ mm/ssmem.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index dabe441..fa2fb27 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -90,7 +90,8 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 		printk(KERN_DEBUG "ALLOCATE NEW PAGE.\n");
+ 
+ 		page = alloc_page(gfp_mask);
+-	
++		/* Make the page unevictable. */
++		mlock_vma_page(page);
+ 		up(&big_ssmem_lock);
+ 		data->listOfPages[addr] = page;
+ 		down(&big_ssmem_lock);
+-- 
+1.7.9.5
+
+
+From 8d15f8030d99c4b8f2607c210f36b7fdcbe89fbb Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Wed, 17 Apr 2013 22:16:26 -0400
+Subject: [PATCH 42/61] -temporarily removed mlock
+
+---
+ mm/ssmem.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index a1e0621..c0cb1f7 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -91,7 +91,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 		page = alloc_page(gfp_mask);
+ 		/* Make the page unevictable. */
+-		mlock_vma_page(page);
++		// mlock_vma_page(page);
+ 		up(&big_ssmem_lock);
+ 		data->listOfPages[addr] = page;
+ 		down(&big_ssmem_lock);
+-- 
+1.7.9.5
+
+
+From a65fc354e78bc28af80753b82fe185172de9a79f Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 10:37:50 -0400
+Subject: [PATCH 43/61] -moved ssmem cleanup into the ops->close callback.
+
+---
+ mm/ssmem.c |   42 +++++++++++++++++++++++++++---------------
+ 1 file changed, 27 insertions(+), 15 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index c0cb1f7..e475c6b 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -34,6 +34,8 @@ struct ssmem_data {
+ };
+ 
+ struct ssmem_data data[SSMEM_MAX];
++struct ssmem_data *get_attached_vma_segment(unsigned long addr);
++int clean_up_ssmem_struct(struct ssmem_data *mem_segment);
+ 
+ static void ssmem_open(struct vm_area_struct *area)
+ {
+@@ -47,8 +49,23 @@ static void ssmem_open(struct vm_area_struct *area)
+ 
+ static void ssmem_close(struct vm_area_struct *area)
+ {
+-
++	struct ssmem_data *mem_segment;
+ 	printk(KERN_DEBUG "\t>>ssmem_close\n");
++
++	mem_segment = get_attached_vma_segment(area->vm_start);
++
++	if (mem_segment) {
++		down(&mem_segment->lock);
++		mem_segment->numOfMappers--;
++		list_del(&area->ssmem_node);
++		if (mem_segment->numOfMappers == 0) {
++			printk(KERN_DEBUG "Cleaning up segment.\n");
++			clean_up_ssmem_struct(mem_segment);
++		}
++		up(&mem_segment->lock);
++	} else {
++		printk(KERN_DEBUG "ssmem_close >> vm_area_struct not found in ssmem segments.");
++	}
+ }
+ 
+ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+@@ -372,7 +389,7 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 
+ 
+ /**
+- * Returnst a pointer to the ssmem_data structure associated with the address
++ * Returns a pointer to the ssmem_data structure associated with the address
+  * passed in as a parameter and NULL if it cannot be found.
+  */
+ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+@@ -448,7 +465,10 @@ asmlinkage int ssmem_detach(void *addr)
+ 		printk(KERN_DEBUG "Failed to find mem_segment.\n");
+ 		return -EFAULT;
+ 	} else {
+-		down(&mem_segment->lock);
++		/*
++		 * Locking will be done inside ops->close()
++		 * down(&mem_segment->lock);
++		 */
+ 		spin_lock(current->mm->page_table_lock);
+ 		/* Removed the current vma from the list. */
+ 		vma_to_remove = find_vma(current->mm, long_addr);
+@@ -459,21 +479,13 @@ asmlinkage int ssmem_detach(void *addr)
+ 						mem_segment->length)) {
+ 				printk(KERN_DEBUG "Failed to munmap.\n");
+ 				return_value = -EFAULT;
+-			} else {
+-				/* Decrement the number of mappers. */
+-				mem_segment->numOfMappers--;
+-				list_del(&vma_to_remove->ssmem_node);
+-
+-				/* If no more attached procs clean up. */
+-				if (mem_segment->numOfMappers == 0) {
+-					printk(KERN_DEBUG "Cleaning up seg\n");
+-					clean_up_ssmem_struct(mem_segment);
+-				}
+-
+ 			}
+ 		}
+ 		spin_unlock(current->mm->page_table_lock);
+-		up(&mem_segment->lock);
++		/*
++		 * Locking will be done inside ops->close
++		 * up(&mem_segment->lock);
++		 */
+ 		return return_value;
+ 	}
+ }
+-- 
+1.7.9.5
+
+
+From 21f706dd77ef433c8883eac65ce79b67569aafea Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 10:43:58 -0400
+Subject: [PATCH 44/61] -reorganized file and checkpatched.
+
+---
+ mm/ssmem.c |  163 ++++++++++++++++++++++++++++++------------------------------
+ 1 file changed, 81 insertions(+), 82 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index e475c6b..2c09663 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -34,8 +34,65 @@ struct ssmem_data {
+ };
+ 
+ struct ssmem_data data[SSMEM_MAX];
+-struct ssmem_data *get_attached_vma_segment(unsigned long addr);
+-int clean_up_ssmem_struct(struct ssmem_data *mem_segment);
++
++/*
++ * TODO
++ * Must be called while holding the ssmem_data.lock.
++ */
++int clean_up_ssmem_struct(struct ssmem_data *mem_segment)
++{
++	/*
++	 * We can use this function to clean up an ssmem_data structure.
++	 */
++	mem_segment->isAllocated = 0;
++	return 0;
++}
++
++/**
++ * Returns a pointer to the ssmem_data structure associated with the address
++ * passed in as a parameter and NULL if it cannot be found.
++ */
++struct ssmem_data *get_attached_vma_segment(unsigned long addr)
++{
++	int i;
++	struct vm_area_struct *test_vma, *curr_vma;
++	struct ssmem_data *ret_data;
++	ret_data = NULL;
++	spin_lock(current->mm->page_table_lock);
++	test_vma = find_vma(current->mm, addr);
++
++	/* If the VMA isn't found then skip searching through the segments. */
++	if (test_vma != NULL)
++		i = 0;
++	else
++		i = SSMEM_MAX;
++
++	/* Cycle through all of the ssmem segments. */
++	for (; i < SSMEM_MAX; i++) {
++		if (ret_data) {
++			printk(KERN_DEBUG "correct ssmem found.\n");
++			break;
++		}
++		down(&data[i].lock);
++		if (data[i].isAllocated) {
++			/*
++			 * Search through the list of VMAs for the vma
++			 * associated with the address.
++			 */
++			list_for_each_entry(curr_vma, data[i].vma_list,
++					ssmem_node) {
++				if (curr_vma == test_vma)
++					ret_data = &data[i];
++			}
++		}
++		up(&data[i].lock);
++	}
++
++	printk(KERN_DEBUG "Cleaning and returning.\n");
++	spin_unlock(current->mm->page_table_lock);
++	return ret_data;
++}
++
+ 
+ static void ssmem_open(struct vm_area_struct *area)
+ {
+@@ -79,8 +136,8 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	pgprot_t prot;
+ 	unsigned long v_addr = (unsigned long) vmf->virtual_address;
+ 	int addr;
+-	spinlock_t *ptl_tmp; 
+-	spinlock_t **ptl; 
++	spinlock_t *ptl_tmp;
++	spinlock_t **ptl;
+ 	int flags;
+ 	pte_t *ptep;
+ 
+@@ -93,22 +150,21 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 	up(&big_ssmem_lock);
+ 	data = (struct ssmem_data *)area->vm_private_data;
+-	down(&big_ssmem_lock);	
++	down(&big_ssmem_lock);
+ 
+-	if(data->listOfPages[addr]!=NULL){/*page exists*/
++	if (data->listOfPages[addr] != NULL) {/*page exists*/
+ 		printk(KERN_DEBUG "PAGE EXISTS.\n");
+ 		up(&big_ssmem_lock);
+ 		page = data->listOfPages[addr];
+ 		down(&big_ssmem_lock);
+ 
+-		
+-	}
+-	else{/*allocate new page*/
++
++	} else {/*allocate new page*/
+ 		printk(KERN_DEBUG "ALLOCATE NEW PAGE.\n");
+ 
+ 		page = alloc_page(gfp_mask);
+ 		/* Make the page unevictable. */
+-		// mlock_vma_page(page);
++		/* mlock_vma_page(page); */
+ 		up(&big_ssmem_lock);
+ 		data->listOfPages[addr] = page;
+ 		down(&big_ssmem_lock);
+@@ -126,15 +182,16 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 		return -1;
+ 	}
+ 	/*mk pte*/
+-	//*ptep = mk_pte(page, area->vm_page_prot);
++	/* *ptep = mk_pte(page, area->vm_page_prot); */
+ 	pte_t entry;
+ 	entry = mk_pte(page, area->vm_page_prot);
+ 
+ 
+-	/*set pte*/
+-	//set_pte_vaddr(v_addr, *ptep);
+-	//set_pte(ptep, *ptep);
+-	
++	/*set pte
++	 *set_pte_vaddr(v_addr, *ptep);
++	 *set_pte(ptep, *ptep);
++	 */
++
+ 	set_pte_at(area->vm_mm, v_addr, ptep, entry);
+ 	update_mmu_cache(area, v_addr, entry);
+ 	inc_mm_counter(area->vm_mm, anon_rss);
+@@ -190,7 +247,7 @@ unsigned int pages_from_bytes(size_t length)
+  *
+  * NOTE: This does not handle vmas and anon_vmas
+  */
+-unsigned int ssmem_create(struct ssmem_data *data, 
++unsigned int ssmem_create(struct ssmem_data *data,
+ 	int flags, size_t length)
+ {
+ 	unsigned int page_count;
+@@ -206,11 +263,11 @@ unsigned int ssmem_create(struct ssmem_data *data,
+ 		return 0;
+ 	/* Calculate the number of pages and allocate them. */
+ 	page_count = pages_from_bytes(length);
+-	data->listOfPages = kmalloc(sizeof(data->listOfPages)*page_count, 
++	data->listOfPages = kmalloc(sizeof(data->listOfPages)*page_count,
+ 		GFP_ATOMIC);
+-	
+-	for(i=0; i<page_count; i++)
+-		data->listOfPages[i]=NULL;
++
++	for (i = 0; i < page_count; i++)
++		data->listOfPages[i] = NULL;
+ 	data->pagecount = page_count;
+ 	data->length = length;
+ 	data->vma_list = kmalloc(sizeof(struct list_head), GFP_KERNEL);
+@@ -261,7 +318,7 @@ int get_vma_prot(int input_flags)
+ int get_vma_flags(int input_flags)
+ {
+ 	int vma_flags;
+-	//vma_flags = MAP_SHARED | MAP_LOCKED | MAP_ANONYMOUS;
++	/*vma_flags = MAP_SHARED | MAP_LOCKED | MAP_ANONYMOUS;*/
+ 	vma_flags = MAP_SHARED | MAP_ANONYMOUS;
+ 	return vma_flags;
+ }
+@@ -276,7 +333,7 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		struct list_head *vma_list, struct ssmem_data *ssmem)
+ {
+ 	struct vm_area_struct *new_vma;
+-	unsigned long ret_addr, offset, addr; 
++	unsigned long ret_addr, offset, addr;
+ 	offset = 0;
+ 	addr = 0;
+ 	new_vma = NULL;
+@@ -305,7 +362,8 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		new_vma->vm_private_data = ssmem;
+ 		new_vma->vm_ops = &ssmem_vm_ops;
+ 		printk(KERN_DEBUG "VM_OPs assigned.\n");
+-		printk(KERN_DEBUG "length = %lu\n", new_vma->vm_end - new_vma->vm_start);
++		printk(KERN_DEBUG "length = %lu\n",
++				new_vma->vm_end - new_vma->vm_start);
+ 		spin_unlock(&current->mm->page_table_lock);
+ 		up_write(&current->mm->mmap_sem);
+ 		printk(KERN_DEBUG "VMA inserted into list.\n");
+@@ -387,65 +445,6 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 	}
+ }
+ 
+-
+-/**
+- * Returns a pointer to the ssmem_data structure associated with the address
+- * passed in as a parameter and NULL if it cannot be found.
+- */
+-struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+-{
+-	int i;
+-	struct vm_area_struct *test_vma, *curr_vma;
+-	struct ssmem_data *ret_data;
+-	ret_data = NULL;
+-	spin_lock(current->mm->page_table_lock);
+-	test_vma = find_vma(current->mm, addr);
+-
+-	/* If the VMA isn't found then skip searching through the segments. */
+-	if (test_vma != NULL)
+-		i = 0;
+-	else
+-		i = SSMEM_MAX;
+-
+-	/* Cycle through all of the ssmem segments. */
+-	for (; i < SSMEM_MAX; i++) {
+-		if (ret_data) {
+-			printk(KERN_DEBUG "correct ssmem found.\n");
+-			break;
+-		}
+-		down(&data[i].lock);
+-		if (data[i].isAllocated) {
+-			/*
+-			 * Search through the list of VMAs for the vma
+-			 * associated with the address.
+-			 */
+-			list_for_each_entry(curr_vma, data[i].vma_list,
+-					ssmem_node) {
+-				if (curr_vma == test_vma)
+-					ret_data = &data[i];
+-			}
+-		}
+-		up(&data[i].lock);
+-	}
+-
+-	printk(KERN_DEBUG "Cleaning and returning.\n");
+-	spin_unlock(current->mm->page_table_lock);
+-	return ret_data;
+-}
+-
+-/*
+- * TODO
+- * Must be called while holding the ssmem_data.lock.
+- */
+-int clean_up_ssmem_struct(struct ssmem_data *mem_segment)
+-{
+-	/*
+-	 * We can use this function to clean up an ssmem_data structure.
+-	 */
+-	mem_segment->isAllocated = 0;
+-	return 0;
+-}
+-
+ /*
+ * Detaches from the shared memory segment at the address specified.  Returns
+ * 0 on success or -EFAULT.
+-- 
+1.7.9.5
+
+
+From 00a829ffa80a6ff9124994ab3895adbd0c3a5601 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 11:15:20 -0400
+Subject: [PATCH 45/61] -filled in the clean up ssmem function.
+
+---
+ mm/ssmem.c |   13 ++++++++++++-
+ 1 file changed, 12 insertions(+), 1 deletion(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 2c09663..d6e71eb 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -44,7 +44,18 @@ int clean_up_ssmem_struct(struct ssmem_data *mem_segment)
+ 	/*
+ 	 * We can use this function to clean up an ssmem_data structure.
+ 	 */
++	int i;
+ 	mem_segment->isAllocated = 0;
++	mem_segment->length = 0;
++	mem_segment->flags = 0;
++
++	for (i = 0; i < mem_segment->pagecount; i++) {
++		/* TODO: Is this the correct way to free pages. */
++		free_pages(mem_segment->listOfPages[i], 0);
++	}
++	mem_segment->pagecount = 0;
++	kfree(mem_segment->listOfPages);
++
+ 	return 0;
+ }
+ 
+@@ -121,7 +132,7 @@ static void ssmem_close(struct vm_area_struct *area)
+ 		}
+ 		up(&mem_segment->lock);
+ 	} else {
+-		printk(KERN_DEBUG "ssmem_close >> vm_area_struct not found in ssmem segments.");
++		printk(KERN_DEBUG "ssmem_close >> vm_area_struct not found in ssmem segments.\n");
+ 	}
+ }
+ 
+-- 
+1.7.9.5
+
+
+From 0f28951f1dbc63fc1e8b8f41d0b910badedb0799 Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Thu, 18 Apr 2013 11:57:36 -0400
+Subject: [PATCH 46/61] cleaned up ssmempipe
+
+---
+ userspace_tests/ssmempipe.c |  122 ++++++++++++++++++++-----------------------
+ 1 file changed, 57 insertions(+), 65 deletions(-)
+
+diff --git a/userspace_tests/ssmempipe.c b/userspace_tests/ssmempipe.c
+index efc9892..9442a34 100644
+--- a/userspace_tests/ssmempipe.c
++++ b/userspace_tests/ssmempipe.c
+@@ -4,6 +4,7 @@
+ #include <sys/syscall.h>
+ #include <string.h>
+ #include <errno.h>
++#include <signal.h>
+ 
+ #define __ssmem_attach 333
+ #define __ssmem_detach 334
+@@ -18,13 +19,14 @@
+ struct slot {
+   int id;
+   int readers;
+-  int **read;
++  int read[8][SLOTS];
+   int written[SLOTS];
+ };
++void *detach_address = NULL;
+ 
+ void *attach(int id) {
+   // first try to attach
+-
++  errno = 0;
+   void *addr = (void *)syscall(__ssmem_attach, id, SSMEM_FLAG_WRITE, SEG_SIZE);
+ 
+   if (errno == EINVAL) {
+@@ -39,6 +41,19 @@ void *attach(int id) {
+     addr = (void *)syscall(__ssmem_attach, id, SSMEM_FLAG_CREATE | SSMEM_FLAG_WRITE, SEG_SIZE);
+     return addr;
+   }
++  detach_address = addr;
++  return addr;
++}
++
++void detach(int sig) {
++  if (detach_address != NULL) {
++    int v = syscall(__ssmem_detach, detach_address);
++    if (v == EFAULT) {
++      printf("error detaching\n");
++      exit(-1);
++    }
++  }
++  exit(0);
+ }
+ 
+ int main(int argc, char **argv) 
+@@ -49,110 +64,85 @@ int main(int argc, char **argv)
+     return 0;
+   }
+ 
++  signal(SIGINT, detach);
+   int name = atoi(argv[1]);  
+   int id = atoi(argv[2]);
+   int slot = 0;
+-  void *addr = attach(id);
+-  void *start = addr;
+-  struct slot slot0 = *((struct slot *)addr);
++  void *a = attach(id);
++  struct slot *start = (struct slot *)a;
++  struct slot slot0 = *((struct slot *)a);
++  char *addr = ((char *)a) + 1 + SLOT_SIZE;
+   int i;
+ 
+   if (strncmp(argv[3], "reader", strlen("reader")) == 0) {    
+-
++    
+     if (slot0.id != id || slot0.readers == 0) {
+       slot0.id = id;
+-      slot0.readers = 1;
+-      slot0.read = (int **)malloc(sizeof(int *));
+-      *(slot0.read) = (int*)malloc(sizeof(int)*SLOTS);
+-
+-      if (slot0.read == NULL || *(slot0.read) == NULL) {
+-	printf("malloc error\n");
+-	return -1;
+-      }
+-
++      slot0.readers = 1;   
+     } else {
+-
+       slot0.readers++;
+-      int **new_read = (int **)malloc(sizeof(int *)*slot0.readers);
+-      
+-      if (new_read == NULL) {
+-	printf("malloc error\n");
+-	return -1;	
+-      }
+-
+-      for(i = 0; i < slot0.readers-1; i++) {
+-	memcpy(new_read[i], slot0.read[i], sizeof(int)*SLOTS);
+-      	free(slot0.read[i]);
+-      }
+-
+-      new_read[slot0.readers-1] = (int *)malloc(sizeof(int)*SLOTS);
++    }
+ 
+-      if (new_read[slot0.readers-1] == NULL) {
+-	printf("malloc error\n");
+-	return -1;
+-      }
+-      
+-      for(i = 0; i < SLOTS; i++) {
+-	new_read[slot0.readers-1][i] = 0;
+-      }
+-      
+-      slot0.read = new_read;
++    for(i = 0; i < SLOTS; i++) {
++      slot0.read[slot0.readers-1][i] = 1;
+     }
+ 
+-    //    int reader_id = slot0.readers-1;
+-    int reader_id = name;
++    int reader_id = slot0.readers-1;
++    *start = slot0;
++    char *data;
+ 
+-    start = (void *)&slot0;
+-    addr = (char *)addr + SLOT_SIZE;
+-    slot++;
+-    
+     while(1) {
+     
+       slot0 = *((struct slot *)start);
+ 
+-      if (slot0.written[slot]) {
+-	char *data = ((char *)addr);
+-	printf("reader%d: %s", reader_id, data);
++      if (slot0.written[slot] && !slot0.read[reader_id][slot]) {
++	data = addr;
++       	printf("reader%d: %s\n", reader_id+1, data);
+ 	slot0.read[reader_id][slot] = 1;
+-	start = (void *)&slot0;
++	*start = slot0;
+ 	
+ 	if (++slot < SLOTS) {
+-	  addr = (char *)addr + SLOT_SIZE;
++	  addr = addr + SLOT_SIZE + 1;
+ 	} else {
+-	  addr = (char *)start + SLOT_SIZE;
+-	  slot = 1;
++	  slot = 0;
++	  addr = ((char *)a) + SLOT_SIZE + 1;
+ 	}
+-      }      
++      }
+     }
+ 
+     return 0;
+-    
++
+   } else if (strncmp(argv[3], "writer", strlen("writer")) == 0) {
++    
++    char *data = (char *)malloc(1024);
+ 
+-    char *data = (char *)malloc(sizeof(char)*SLOT_SIZE);
++    if (data == NULL) {
++      printf("malloc error\n");
++      exit(-1);
++    }
+ 
+     if (slot0.id != id) {
+       slot0.id = id;
+       slot0.readers = 0;
+     }
+ 
+-    start = &slot0;
+-    addr = (char *)addr + SLOT_SIZE;
++    *start = slot0;
+     int read = 0;
+ 
+     while(1) {
+       fgets(data, sizeof(data), stdin);
+ 
+       read = 0;
+-      slot0 = *((struct slot *)start);
+-      
++      slot0 = *start;
++
+       while (read != slot0.readers) {
+-	
++
+ 	for (i = 0; i < slot0.readers; i++) {
+ 	  read += slot0.read[i][slot];
+ 	}
+ 
+ 	if (read == slot0.readers) {
++
+ 	  addr = data;
+ 	  slot0.written[slot] = 1;
+ 
+@@ -160,17 +150,19 @@ int main(int argc, char **argv)
+ 	    slot0.read[i][slot] = 0;
+ 	  }
+ 
++	  *start = slot0;
++
+ 	} else {
+ 	  read = 0;
+ 	  sleep(1);
+ 	}
+       }
+-       
+-      if (++slot < SLOTS) {
+-	addr = (char *)addr + SLOT_SIZE;
++
++      if (++slot < SLOTS) {	
++	addr = addr + SLOT_SIZE + 1;
+       } else {
+-	addr = (char *)start + SLOT_SIZE;
+-	slot = 1;
++	addr = ((char *)a) + SLOT_SIZE + 1;
++	slot = 0;	
+       }
+     }
+   }
+-- 
+1.7.9.5
+
+
+From ccf5dc53ee71246934a7883102d216c01d72e9ca Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 12:21:12 -0400
+Subject: [PATCH 47/61] -added mlocking to vma
+
+---
+ mm/ssmem.c |   14 ++++++++++++--
+ 1 file changed, 12 insertions(+), 2 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index d6e71eb..6e884fa 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -9,6 +9,8 @@
+ #include <asm/pgtable.h>
+ #include <linux/pagemap.h>
+ 
++#include "internal.h"
++
+ #define SSMEM_MAX 1024
+ #define SSMEM_FLAG_CREATE 0x1
+ #define SSMEM_FLAG_WRITE  0x2
+@@ -126,6 +128,7 @@ static void ssmem_close(struct vm_area_struct *area)
+ 		down(&mem_segment->lock);
+ 		mem_segment->numOfMappers--;
+ 		list_del(&area->ssmem_node);
++		munlock_vma_pages_all(area);
+ 		if (mem_segment->numOfMappers == 0) {
+ 			printk(KERN_DEBUG "Cleaning up segment.\n");
+ 			clean_up_ssmem_struct(mem_segment);
+@@ -208,7 +211,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	inc_mm_counter(area->vm_mm, anon_rss);
+ 	page_cache_release(page);
+ 	page_add_anon_rmap(page, area, v_addr);
+-
++	mlock_vma_page(page);
+ 
+ 	printk(KERN_DEBUG "v_addr = %lu\n", v_addr);
+ 	printk(KERN_DEBUG "preparing to unlock.\n");
+@@ -484,12 +487,19 @@ asmlinkage int ssmem_detach(void *addr)
+ 		vma_to_remove = find_vma(current->mm, long_addr);
+ 
+ 		if (vma_to_remove != NULL) {
+-			/* Munmap the memory area. */
++			/*
++			 * Munmap the memory area.
++			 * NOTE: do_munmap does not seem to want to work
++			 * nicely.  will implement something on our own.
+ 			if (do_munmap(current->mm, long_addr,
+ 						mem_segment->length)) {
+ 				printk(KERN_DEBUG "Failed to munmap.\n");
+ 				return_value = -EFAULT;
+ 			}
++			*/
++
++			vma_to_remove->vm_ops->close(vma_to_remove);
++
+ 		}
+ 		spin_unlock(current->mm->page_table_lock);
+ 		/*
+-- 
+1.7.9.5
+
+
+From 23d0ae7a4492b7b24d204e891c77a3e25233e654 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 14:39:53 -0400
+Subject: [PATCH 48/61] -implementing without do_unmap.
+
+---
+ mm/ssmem.c |   30 +++++++++++++++++++++++++++---
+ 1 file changed, 27 insertions(+), 3 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 6e884fa..c965f6a 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -466,9 +466,10 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ asmlinkage int ssmem_detach(void *addr)
+ {
+ 	int return_value;
+-	unsigned long long_addr;
++	unsigned long long_addr, start, end;
+ 	struct ssmem_data *mem_segment;
+-	struct vm_area_struct *vma_to_remove;
++	struct vm_area_struct *vma_to_remove, *prev_vma;
++	struct mm_struct *mm;
+ 
+ 	return_value = 0;
+ 	long_addr = (unsigned long) addr;
+@@ -484,7 +485,7 @@ asmlinkage int ssmem_detach(void *addr)
+ 		 */
+ 		spin_lock(current->mm->page_table_lock);
+ 		/* Removed the current vma from the list. */
+-		vma_to_remove = find_vma(current->mm, long_addr);
++		vma_to_remove = find_vma_prev(current->mm, long_addr, &prev_vma);
+ 
+ 		if (vma_to_remove != NULL) {
+ 			/*
+@@ -496,8 +497,31 @@ asmlinkage int ssmem_detach(void *addr)
+ 				printk(KERN_DEBUG "Failed to munmap.\n");
+ 				return_value = -EFAULT;
+ 			}
++
++			unmap_vmas is getting a bad page error deep into the call stack
++			and I'm not really sure why.
++
+ 			*/
++			mm = vma_to_remove->vm_mm;
++			start = vma_to_remove->vm_start;
++			end = start + mem_segment->length;
++
++			/*
++			 * Deal with the accounting on the mm_struct.
++			 * 1. Remove the vma from the rb tree in the mm.
++			 * 2. Decrement the number of mappers
++			 * 3. Remove the proper vma from the list.
++			 * 4. Unmap the area
++			 * 5. Clear the cache.
++			 */
++			rb_erase(&vma_to_remove->vm_rb, &mm->mm_rb);
++			mm->map_count--;
++			prev_vma->next = vma_to_remove->next;
++			vma_to_remove->next = NULL;
++			
++
+ 
++			//detach_vmas_to_be_unmapped(mm, vma, prev_vma, end);
+ 			vma_to_remove->vm_ops->close(vma_to_remove);
+ 
+ 		}
+-- 
+1.7.9.5
+
+
+From 80840fb0b8c888889240a5b3556e6973149ec662 Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Thu, 18 Apr 2013 16:40:27 -0400
+Subject: [PATCH 49/61] Detach changes
+
+---
+ mm/ssmem.c |   11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index c965f6a..f25b47e 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -128,7 +128,7 @@ static void ssmem_close(struct vm_area_struct *area)
+ 		down(&mem_segment->lock);
+ 		mem_segment->numOfMappers--;
+ 		list_del(&area->ssmem_node);
+-		munlock_vma_pages_all(area);
++		//		munlock_vma_pages_all(area);
+ 		if (mem_segment->numOfMappers == 0) {
+ 			printk(KERN_DEBUG "Cleaning up segment.\n");
+ 			clean_up_ssmem_struct(mem_segment);
+@@ -211,7 +211,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	inc_mm_counter(area->vm_mm, anon_rss);
+ 	page_cache_release(page);
+ 	page_add_anon_rmap(page, area, v_addr);
+-	mlock_vma_page(page);
++	//	mlock_vma_page(page);
+ 
+ 	printk(KERN_DEBUG "v_addr = %lu\n", v_addr);
+ 	printk(KERN_DEBUG "preparing to unlock.\n");
+@@ -516,9 +516,10 @@ asmlinkage int ssmem_detach(void *addr)
+ 			 */
+ 			rb_erase(&vma_to_remove->vm_rb, &mm->mm_rb);
+ 			mm->map_count--;
+-			prev_vma->next = vma_to_remove->next;
+-			vma_to_remove->next = NULL;
+-			
++			prev_vma->vm_next = vma_to_remove->vm_next;
++			vma_to_remove->vm_next = NULL;
++			mm->unmap_area(mm, long_addr);
++			mm->mmap_cache = NULL;
+ 
+ 
+ 			//detach_vmas_to_be_unmapped(mm, vma, prev_vma, end);
+-- 
+1.7.9.5
+
+
+From 976e2bd288a7b6918981880a461085ee7c1baa12 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <rbs2152@columbia.edu>
+Date: Thu, 18 Apr 2013 19:05:42 -0400
+Subject: [PATCH 50/61] -now getting into the ssmem_cleanup. -freeing pages
+ does not currently work.
+
+---
+ mm/ssmem.c |   53 ++++++++++++++++++++++++++++++++++++++++++++++-------
+ 1 file changed, 46 insertions(+), 7 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index f25b47e..b0ab325 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -7,6 +7,7 @@
+ #include <linux/rmap.h>
+ #include <asm/page.h>
+ #include <asm/pgtable.h>
++#include <asm/tlbflush.h>
+ #include <linux/pagemap.h>
+ 
+ #include "internal.h"
+@@ -50,13 +51,17 @@ int clean_up_ssmem_struct(struct ssmem_data *mem_segment)
+ 	mem_segment->isAllocated = 0;
+ 	mem_segment->length = 0;
+ 	mem_segment->flags = 0;
++	printk(KERN_DEBUG "Cleaning up ssmem_struct.\n");
+ 
+ 	for (i = 0; i < mem_segment->pagecount; i++) {
++		// printk(KERN_DEBUG "Clearing page: %d\n", i);
+ 		/* TODO: Is this the correct way to free pages. */
+-		free_pages(mem_segment->listOfPages[i], 0);
++		//free_pages(mem_segment->listOfPages[i], 0);
+ 	}
+ 	mem_segment->pagecount = 0;
+ 	kfree(mem_segment->listOfPages);
++	flush_cache_mm(current->mm);
++	flush_tlb_mm(current->mm);
+ 
+ 	return 0;
+ }
+@@ -72,8 +77,11 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 	struct ssmem_data *ret_data;
+ 	ret_data = NULL;
+ 	spin_lock(current->mm->page_table_lock);
++	printk(KERN_DEBUG "searching using address: %lu\n", addr);
+ 	test_vma = find_vma(current->mm, addr);
+-
++	printk(KERN_DEBUG "returned vma: %p\n", test_vma);
++	
++	printk("test_vma = %p\n", test_vma);
+ 	/* If the VMA isn't found then skip searching through the segments. */
+ 	if (test_vma != NULL)
+ 		i = 0;
+@@ -82,7 +90,7 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 
+ 	/* Cycle through all of the ssmem segments. */
+ 	for (; i < SSMEM_MAX; i++) {
+-		if (ret_data) {
++		if (ret_data != NULL) {
+ 			printk(KERN_DEBUG "correct ssmem found.\n");
+ 			break;
+ 		}
+@@ -101,7 +109,7 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 		up(&data[i].lock);
+ 	}
+ 
+-	printk(KERN_DEBUG "Cleaning and returning.\n");
++	printk(KERN_DEBUG "Returning ssmem at %p.\n", ret_data);
+ 	spin_unlock(current->mm->page_table_lock);
+ 	return ret_data;
+ }
+@@ -119,23 +127,48 @@ static void ssmem_open(struct vm_area_struct *area)
+ 
+ static void ssmem_close(struct vm_area_struct *area)
+ {
++	printk("VMA_TO_REMOVE3 = %p\n", area);
+ 	struct ssmem_data *mem_segment;
++	struct vm_area_struct *prev_vma, *vma_to_remove;
++	struct mm_struct *mm;
++	unsigned long addr;
+ 	printk(KERN_DEBUG "\t>>ssmem_close\n");
+ 
++	mm = current->mm;
+ 	mem_segment = get_attached_vma_segment(area->vm_start);
++	vma_to_remove = find_vma_prev(current->mm, area->vm_start, &prev_vma);
++	vma_to_remove = area;
++	addr = area->vm_start;
+ 
+-	if (mem_segment) {
++	/*
++	 * Deal with the accounting on the mm_struct.
++	 * 1. Remove the vma from the rb tree in the mm.
++	 * 2. Decrement the number of mappers
++	 * 3. Remove the proper vma from the list.
++	 * 4. Unmap the area
++	 * 5. Clear the cache.
++	 */
++	
++	rb_erase(&vma_to_remove->vm_rb, &mm->mm_rb);
++	mm->map_count--;
++	prev_vma->vm_next = vma_to_remove->vm_next;
++	vma_to_remove->vm_next = NULL;
++	mm->unmap_area(mm, addr);
++	mm->mmap_cache = NULL;
++	
++	printk(KERN_DEBUG "Returned mem_segment = %p\n", mem_segment);
++	if (mem_segment != NULL) {
++		printk(KERN_DEBUG "Decrementing mappers for: %p\n", mem_segment);
+ 		down(&mem_segment->lock);
+ 		mem_segment->numOfMappers--;
+ 		list_del(&area->ssmem_node);
+ 		//		munlock_vma_pages_all(area);
+ 		if (mem_segment->numOfMappers == 0) {
+-			printk(KERN_DEBUG "Cleaning up segment.\n");
+ 			clean_up_ssmem_struct(mem_segment);
+ 		}
+ 		up(&mem_segment->lock);
+ 	} else {
+-		printk(KERN_DEBUG "ssmem_close >> vm_area_struct not found in ssmem segments.\n");
++		printk(KERN_DEBUG "ssmem_close >> mem_segment not found for address.\n");
+ 	}
+ }
+ 
+@@ -485,9 +518,12 @@ asmlinkage int ssmem_detach(void *addr)
+ 		 */
+ 		spin_lock(current->mm->page_table_lock);
+ 		/* Removed the current vma from the list. */
++		printk(KERN_DEBUG "searching (prev) using address: %lu\n", long_addr);
+ 		vma_to_remove = find_vma_prev(current->mm, long_addr, &prev_vma);
++		printk(KERN_DEBUG "returned vma: %p\n", vma_to_remove);
+ 
+ 		if (vma_to_remove != NULL) {
++			printk("VMA_TO_REMOVE1 = %p\n", vma_to_remove);
+ 			/*
+ 			 * Munmap the memory area.
+ 			 * NOTE: do_munmap does not seem to want to work
+@@ -514,15 +550,18 @@ asmlinkage int ssmem_detach(void *addr)
+ 			 * 4. Unmap the area
+ 			 * 5. Clear the cache.
+ 			 */
++			/*
+ 			rb_erase(&vma_to_remove->vm_rb, &mm->mm_rb);
+ 			mm->map_count--;
+ 			prev_vma->vm_next = vma_to_remove->vm_next;
+ 			vma_to_remove->vm_next = NULL;
+ 			mm->unmap_area(mm, long_addr);
+ 			mm->mmap_cache = NULL;
++			*/
+ 
+ 
+ 			//detach_vmas_to_be_unmapped(mm, vma, prev_vma, end);
++			printk("VMA_TO_REMOVE2 = %p\n", vma_to_remove);
+ 			vma_to_remove->vm_ops->close(vma_to_remove);
+ 
+ 		}
+-- 
+1.7.9.5
+
+
+From eb49b5e7bdb26630ca952b0b24d96afd5f6f1d40 Mon Sep 17 00:00:00 2001
+From: Karan Uppal <ku2138@columbia.edu>
+Date: Thu, 18 Apr 2013 20:58:26 -0400
+Subject: [PATCH 51/61] locks fixed
+
+---
+ mm/ssmem.c |   43 ++++++++++++++++++-------------------------
+ 1 file changed, 18 insertions(+), 25 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index b0ab325..2245e35 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -195,28 +195,24 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 
+ 	ptl = &ptl_tmp;
+ 
+-	up(&big_ssmem_lock);
+ 	data = (struct ssmem_data *)area->vm_private_data;
+-	down(&big_ssmem_lock);
+-
+-	if (data->listOfPages[addr] != NULL) {/*page exists*/
+-		printk(KERN_DEBUG "PAGE EXISTS.\n");
+-		up(&big_ssmem_lock);
+-		page = data->listOfPages[addr];
+-		down(&big_ssmem_lock);
+ 
++	down(&data->lock);
++	page = data->listOfPages[addr];
++	up(&data->lock);
+ 
+-	} else {/*allocate new page*/
++	if(page == NULL) {/*allocate new page*/
+ 		printk(KERN_DEBUG "ALLOCATE NEW PAGE.\n");
+ 
+ 		page = alloc_page(gfp_mask);
+ 		/* Make the page unevictable. */
+ 		/* mlock_vma_page(page); */
+-		up(&big_ssmem_lock);
+-		data->listOfPages[addr] = page;
+ 		down(&big_ssmem_lock);
++		data->listOfPages[addr] = page;
++		up(&big_ssmem_lock);
+ 
+ 	}
++
+ 	lock_page(page);
+ 	get_page(page); /*increments count*/
+ 	atomic_inc(&page->_mapcount);
+@@ -226,25 +222,19 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	ptep = get_locked_pte(area->vm_mm, v_addr, ptl);
+ 	if (ptep == NULL) {
+ 		printk(KERN_DEBUG "ptep is NULL.\n");
++		pte_unmap_unlock(ptep, *ptl);
+ 		return -1;
+ 	}
+-	/*mk pte*/
+-	/* *ptep = mk_pte(page, area->vm_page_prot); */
++	
+ 	pte_t entry;
+ 	entry = mk_pte(page, area->vm_page_prot);
+ 
+-
+-	/*set pte
+-	 *set_pte_vaddr(v_addr, *ptep);
+-	 *set_pte(ptep, *ptep);
+-	 */
+-
+ 	set_pte_at(area->vm_mm, v_addr, ptep, entry);
+ 	update_mmu_cache(area, v_addr, entry);
+ 	inc_mm_counter(area->vm_mm, anon_rss);
+ 	page_cache_release(page);
+ 	page_add_anon_rmap(page, area, v_addr);
+-	//	mlock_vma_page(page);
++	
+ 
+ 	printk(KERN_DEBUG "v_addr = %lu\n", v_addr);
+ 	printk(KERN_DEBUG "preparing to unlock.\n");
+@@ -304,7 +294,7 @@ unsigned int ssmem_create(struct ssmem_data *data,
+ 	struct list_head *vma_list;
+ 
+ 
+-	if (length == 0)
++	if (length <= 0)
+ 		return -EINVAL;
+ 	if (data->isAllocated)
+ 		return 0;
+@@ -315,6 +305,7 @@ unsigned int ssmem_create(struct ssmem_data *data,
+ 
+ 	for (i = 0; i < page_count; i++)
+ 		data->listOfPages[i] = NULL;
++	
+ 	data->pagecount = page_count;
+ 	data->length = length;
+ 	data->vma_list = kmalloc(sizeof(struct list_head), GFP_KERNEL);
+@@ -432,9 +423,9 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 	 * function is called before locks are initialized.
+ 	 */
+ 	if (!locks_init) {
+-		up(&big_ssmem_lock);
+-		init_locks();
+ 		down(&big_ssmem_lock);
++		init_locks();
++		up(&big_ssmem_lock);
+ 	}
+ 
+ 	vma_prot = get_vma_prot(flags);
+@@ -453,10 +444,12 @@ asmlinkage void *ssmem_attach(int id, int flags, size_t length)
+ 			printk(KERN_DEBUG "CREATION.\n");
+ 			/* Create if it is not already allocated. */
+ 			if (!data[id].isAllocated) {
+-				if (length == 0) {
++				/*Done is ssmem_create*/
++				/*if (length == 0) {
+ 					printk(KERN_DEBUG "Length 0.\n");
+ 					return (void *) -EINVAL;
+-				}
++				}*/
++
+ 				printk(KERN_DEBUG "not allocated.\n");
+ 				if (ssmem_create(&data[id], flags,
+ 						length) != 0) {
+-- 
+1.7.9.5
+
+
+From 9a98f5a25468ee2d3df990e72e8323143efc84db Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 21:05:35 -0400
+Subject: [PATCH 52/61] -adding notes about unmapping.
+
+---
+ mm/ssmem.c |    7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 2245e35..b815001 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -155,6 +155,13 @@ static void ssmem_close(struct vm_area_struct *area)
+ 	vma_to_remove->vm_next = NULL;
+ 	mm->unmap_area(mm, addr);
+ 	mm->mmap_cache = NULL;
++
++	/*
++	 * Unmapping a region.
++	 *
++	 *
++	 *
++	 */
+ 	
+ 	printk(KERN_DEBUG "Returned mem_segment = %p\n", mem_segment);
+ 	if (mem_segment != NULL) {
+-- 
+1.7.9.5
+
+
+From 77115a0d2b60922af53bf023e94ed1ba50310c6c Mon Sep 17 00:00:00 2001
+From: Karan Uppal <ku2138@columbia.edu>
+Date: Thu, 18 Apr 2013 21:41:38 -0400
+Subject: [PATCH 53/61] locks in mmap_attach fixed
+
+---
+ mm/ssmem.c |    8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 2245e35..cb8ec2c 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -305,7 +305,7 @@ unsigned int ssmem_create(struct ssmem_data *data,
+ 
+ 	for (i = 0; i < page_count; i++)
+ 		data->listOfPages[i] = NULL;
+-	
++
+ 	data->pagecount = page_count;
+ 	data->length = length;
+ 	data->vma_list = kmalloc(sizeof(struct list_head), GFP_KERNEL);
+@@ -385,11 +385,11 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 	 * May need to lock mm?
+ 	 * TODO: Make sure lists are being created correctly.
+ 	 */
+-	spin_lock(&current->mm->page_table_lock);
++	
+ 	new_vma = find_vma(current->mm, ret_addr + 1);
+ 	if (new_vma == NULL) {
+ 		printk(KERN_DEBUG "Failed to find VMA.\n");
+-		spin_unlock(&current->mm->page_table_lock);
++		
+ 		up_write(&current->mm->mmap_sem);
+ 		printk(KERN_DEBUG "Returning unlocked.\n");
+ 		return -ENOMEM;
+@@ -402,7 +402,7 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		printk(KERN_DEBUG "VM_OPs assigned.\n");
+ 		printk(KERN_DEBUG "length = %lu\n",
+ 				new_vma->vm_end - new_vma->vm_start);
+-		spin_unlock(&current->mm->page_table_lock);
++		
+ 		up_write(&current->mm->mmap_sem);
+ 		printk(KERN_DEBUG "VMA inserted into list.\n");
+ 		return ret_addr;
+-- 
+1.7.9.5
+
+
+From 2940e650ab7d33a3d9f5378bf1e10f0899698d73 Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Thu, 18 Apr 2013 22:28:06 -0400
+Subject: [PATCH 54/61] Somewhat working ssmempipe
+
+---
+ user_tests/test.c           |    3 ++-
+ userspace_tests/ssmempipe.c |   30 ++++++++++++++++--------------
+ 2 files changed, 18 insertions(+), 15 deletions(-)
+
+diff --git a/user_tests/test.c b/user_tests/test.c
+index d6cd139..73c7758 100644
+--- a/user_tests/test.c
++++ b/user_tests/test.c
+@@ -46,9 +46,10 @@ int main() {
+ 	}
+ 
+ 	printf("=====detaching====\n");
+-	ret = syscall(__NR_ssmem_detach, addr1);
++	ret = syscall(__NR_ssmem_detach, addr1);	
+ 	printf("detach 1 = %d\n", ret);
+ 	ret = syscall(__NR_ssmem_detach, addr2);
++	while(1);
+ 	printf("detach 2 = %d\n", ret);
+ 
+ }
+diff --git a/userspace_tests/ssmempipe.c b/userspace_tests/ssmempipe.c
+index 9442a34..6fbe2ed 100644
+--- a/userspace_tests/ssmempipe.c
++++ b/userspace_tests/ssmempipe.c
+@@ -47,7 +47,8 @@ void *attach(int id) {
+ 
+ void detach(int sig) {
+   if (detach_address != NULL) {
+-    int v = syscall(__ssmem_detach, detach_address);
++    int v = 0;
++    //    int v = syscall(__ssmem_detach, detach_address);
+     if (v == EFAULT) {
+       printf("error detaching\n");
+       exit(-1);
+@@ -71,14 +72,14 @@ int main(int argc, char **argv)
+   void *a = attach(id);
+   struct slot *start = (struct slot *)a;
+   struct slot slot0 = *((struct slot *)a);
+-  char *addr = ((char *)a) + 1 + SLOT_SIZE;
++  char *addr = ((char *)a) + SLOT_SIZE;
+   int i;
+ 
+   if (strncmp(argv[3], "reader", strlen("reader")) == 0) {    
+     
+     if (slot0.id != id || slot0.readers == 0) {
+       slot0.id = id;
+-      slot0.readers = 1;   
++      slot0.readers = 1;
+     } else {
+       slot0.readers++;
+     }
+@@ -96,16 +97,16 @@ int main(int argc, char **argv)
+       slot0 = *((struct slot *)start);
+ 
+       if (slot0.written[slot] && !slot0.read[reader_id][slot]) {
+-	data = addr;
+-       	printf("reader%d: %s\n", reader_id+1, data);
++	//data = addr;
++       	printf("reader%d: %s\n", reader_id+1, addr);
+ 	slot0.read[reader_id][slot] = 1;
+ 	*start = slot0;
+ 	
+-	if (++slot < SLOTS) {
+-	  addr = addr + SLOT_SIZE + 1;
++	if (++slot < SLOTS-1) {
++	  addr = addr + SLOT_SIZE;
+ 	} else {
+ 	  slot = 0;
+-	  addr = ((char *)a) + SLOT_SIZE + 1;
++	  addr = ((char *)a) + SLOT_SIZE;
+ 	}
+       }
+     }
+@@ -130,7 +131,7 @@ int main(int argc, char **argv)
+     int read = 0;
+ 
+     while(1) {
+-      fgets(data, sizeof(data), stdin);
++      fgets(data, SLOT_SIZE, stdin);
+ 
+       read = 0;
+       slot0 = *start;
+@@ -142,8 +143,9 @@ int main(int argc, char **argv)
+ 	}
+ 
+ 	if (read == slot0.readers) {
++	  memcpy(addr, data, SLOT_SIZE);
++	  //	  addr = data;
+ 
+-	  addr = data;
+ 	  slot0.written[slot] = 1;
+ 
+ 	  for (i = 0; i < slot0.readers; i++) {
+@@ -151,17 +153,17 @@ int main(int argc, char **argv)
+ 	  }
+ 
+ 	  *start = slot0;
+-
++	  
+ 	} else {
+ 	  read = 0;
+ 	  sleep(1);
+ 	}
+       }
+ 
+-      if (++slot < SLOTS) {	
+-	addr = addr + SLOT_SIZE + 1;
++      if (++slot < SLOTS-1) {	
++	addr = addr + SLOT_SIZE;
+       } else {
+-	addr = ((char *)a) + SLOT_SIZE + 1;
++	addr = ((char *)a) + SLOT_SIZE;
+ 	slot = 0;	
+       }
+     }
+-- 
+1.7.9.5
+
+
+From 6e4b130d1ad23f6f01808806b5ee5c7665773d20 Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Thu, 18 Apr 2013 22:38:16 -0400
+Subject: [PATCH 55/61] Call detach
+
+---
+ userspace_tests/ssmempipe.c |   13 +++++--------
+ 1 file changed, 5 insertions(+), 8 deletions(-)
+
+diff --git a/userspace_tests/ssmempipe.c b/userspace_tests/ssmempipe.c
+index 6fbe2ed..0d8c2a8 100644
+--- a/userspace_tests/ssmempipe.c
++++ b/userspace_tests/ssmempipe.c
+@@ -46,9 +46,8 @@ void *attach(int id) {
+ }
+ 
+ void detach(int sig) {
+-  if (detach_address != NULL) {
+-    int v = 0;
+-    //    int v = syscall(__ssmem_detach, detach_address);
++  if (detach_address != NULL) {    
++    int v = syscall(__ssmem_detach, detach_address);
+     if (v == EFAULT) {
+       printf("error detaching\n");
+       exit(-1);
+@@ -90,15 +89,14 @@ int main(int argc, char **argv)
+ 
+     int reader_id = slot0.readers-1;
+     *start = slot0;
+-    char *data;
++
+ 
+     while(1) {
+     
+       slot0 = *((struct slot *)start);
+ 
+       if (slot0.written[slot] && !slot0.read[reader_id][slot]) {
+-	//data = addr;
+-       	printf("reader%d: %s\n", reader_id+1, addr);
++       	printf("reader%d: %s", reader_id+1, addr);
+ 	slot0.read[reader_id][slot] = 1;
+ 	*start = slot0;
+ 	
+@@ -144,8 +142,7 @@ int main(int argc, char **argv)
+ 
+ 	if (read == slot0.readers) {
+ 	  memcpy(addr, data, SLOT_SIZE);
+-	  //	  addr = data;
+-
++	  
+ 	  slot0.written[slot] = 1;
+ 
+ 	  for (i = 0; i < slot0.readers; i++) {
+-- 
+1.7.9.5
+
+
+From c1bfab46944dde4fa483717ea7eac83dfac591aa Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 22:40:10 -0400
+Subject: [PATCH 56/61] -added coversheet.
+
+---
+ cover_sheet.txt |   55 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 55 insertions(+)
+ create mode 100644 cover_sheet.txt
+
+diff --git a/cover_sheet.txt b/cover_sheet.txt
+new file mode 100644
+index 0000000..c832e8a
+--- /dev/null
++++ b/cover_sheet.txt
+@@ -0,0 +1,55 @@
++
++                     W4118 Spring 2013 Programming Assignment
++
++Assignment Number: 4
++
++Group Number: 16
++
++Name and UNI of Group Member 1: Riley Spahn, rbs2152
++   
++Name and UNI of Group Member 2: Venkata Yamajala, vsy 2104
++
++Name and UNI of Group Member 3: Karran Uppal, ku2138
++   
++
++We certify that:
++   	   _ Our code compiles and works for all reasonable inputs
++	   x Our code compiles, but does not work for all inputs
++	   _ Our code does not compile
++
++     * While we may have discussed the assignment with others, the code
++       submitted is entirely our own group's work and no other student 
++       has edited it.
++       -Yes-
++     * So far as we have been able to determine, the program properly
++       handles all reasonable inputs.
++       -We have counts on the pages thar are incorrect which is causing
++       problems when detaching.
++
++   Further instructions to the student: 
++     * Check your code to make sure it is readable. You may wish to
++       add some comments, change a variable name, or even restructure the
++       code. This also often helps you find bugs in the code.
++     * Include this file with the files you submit for your
++       programming assignment.  The file should be named  "pg_cover.txt".
++
++     * Describe below how each member of your group contributed to the
++       assignment.  Include a list of C functions and files that you modified
++       or implemented and which group member was primarily responsible
++       for doing each.  All group members are expected to contribute in
++       writing the code for each assignment.
++       
++Member Contributions:
++
++    # Riley Spahn
++        * mm/ssmem.c
++            * ssmem_attach - primary author of attach function.
++            * clean_up_ssmem_struct
++            * pages_from_bytes - helper
++            * ssmem_create - initialization
++            * init_locks - helper
++            * ssmem_detach - coauthor
++            * ssmem_fault - assisted with debugging.
++    # Venkata Yamajala
++    # Karran Uppal
++
+-- 
+1.7.9.5
+
+
+From 58438030c47ed19bd32103ae5bae2c9138a89178 Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Thu, 18 Apr 2013 22:43:00 -0400
+Subject: [PATCH 57/61] cover_sheet.txt
+
+---
+ cover_sheet.txt |    4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/cover_sheet.txt b/cover_sheet.txt
+index c832e8a..d6b739f 100644
+--- a/cover_sheet.txt
++++ b/cover_sheet.txt
+@@ -50,6 +50,10 @@ Member Contributions:
+             * init_locks - helper
+             * ssmem_detach - coauthor
+             * ssmem_fault - assisted with debugging.
++
+     # Venkata Yamajala
++      	I wrote ssmempipe.c and helped a little with detach. 
++	
++    
+     # Karran Uppal
+ 
+-- 
+1.7.9.5
+
+
+From ee62366831907da0cccb76e23d4c8c5310b10b4d Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 22:46:52 -0400
+Subject: [PATCH 58/61] -corrected check patch issues in ssmem.c
+
+---
+ mm/ssmem.c |   65 ++++++++++++------------------------------------------------
+ 1 file changed, 13 insertions(+), 52 deletions(-)
+
+diff --git a/mm/ssmem.c b/mm/ssmem.c
+index 407cb22..659eeec 100644
+--- a/mm/ssmem.c
++++ b/mm/ssmem.c
+@@ -54,9 +54,9 @@ int clean_up_ssmem_struct(struct ssmem_data *mem_segment)
+ 	printk(KERN_DEBUG "Cleaning up ssmem_struct.\n");
+ 
+ 	for (i = 0; i < mem_segment->pagecount; i++) {
+-		// printk(KERN_DEBUG "Clearing page: %d\n", i);
+-		/* TODO: Is this the correct way to free pages. */
+-		//free_pages(mem_segment->listOfPages[i], 0);
++		/* TODO: Is this the correct way to free pages
++		free_pages(mem_segment->listOfPages[i], 0);
++		*/
+ 	}
+ 	mem_segment->pagecount = 0;
+ 	kfree(mem_segment->listOfPages);
+@@ -80,8 +80,7 @@ struct ssmem_data *get_attached_vma_segment(unsigned long addr)
+ 	printk(KERN_DEBUG "searching using address: %lu\n", addr);
+ 	test_vma = find_vma(current->mm, addr);
+ 	printk(KERN_DEBUG "returned vma: %p\n", test_vma);
+-	
+-	printk("test_vma = %p\n", test_vma);
++
+ 	/* If the VMA isn't found then skip searching through the segments. */
+ 	if (test_vma != NULL)
+ 		i = 0;
+@@ -127,7 +126,6 @@ static void ssmem_open(struct vm_area_struct *area)
+ 
+ static void ssmem_close(struct vm_area_struct *area)
+ {
+-	printk("VMA_TO_REMOVE3 = %p\n", area);
+ 	struct ssmem_data *mem_segment;
+ 	struct vm_area_struct *prev_vma, *vma_to_remove;
+ 	struct mm_struct *mm;
+@@ -148,7 +146,7 @@ static void ssmem_close(struct vm_area_struct *area)
+ 	 * 4. Unmap the area
+ 	 * 5. Clear the cache.
+ 	 */
+-	
++
+ 	rb_erase(&vma_to_remove->vm_rb, &mm->mm_rb);
+ 	mm->map_count--;
+ 	prev_vma->vm_next = vma_to_remove->vm_next;
+@@ -156,23 +154,15 @@ static void ssmem_close(struct vm_area_struct *area)
+ 	mm->unmap_area(mm, addr);
+ 	mm->mmap_cache = NULL;
+ 
+-	/*
+-	 * Unmapping a region.
+-	 *
+-	 *
+-	 *
+-	 */
+-	
+ 	printk(KERN_DEBUG "Returned mem_segment = %p\n", mem_segment);
+ 	if (mem_segment != NULL) {
+-		printk(KERN_DEBUG "Decrementing mappers for: %p\n", mem_segment);
++		printk(KERN_DEBUG "Decrementing mappers for: %p\n",
++				mem_segment);
+ 		down(&mem_segment->lock);
+ 		mem_segment->numOfMappers--;
+ 		list_del(&area->ssmem_node);
+-		//		munlock_vma_pages_all(area);
+-		if (mem_segment->numOfMappers == 0) {
++		if (mem_segment->numOfMappers == 0)
+ 			clean_up_ssmem_struct(mem_segment);
+-		}
+ 		up(&mem_segment->lock);
+ 	} else {
+ 		printk(KERN_DEBUG "ssmem_close >> mem_segment not found for address.\n");
+@@ -208,7 +198,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	page = data->listOfPages[addr];
+ 	up(&data->lock);
+ 
+-	if(page == NULL) {/*allocate new page*/
++	if (page == NULL) {/*allocate new page*/
+ 		printk(KERN_DEBUG "ALLOCATE NEW PAGE.\n");
+ 
+ 		page = alloc_page(gfp_mask);
+@@ -232,7 +222,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 		pte_unmap_unlock(ptep, *ptl);
+ 		return -1;
+ 	}
+-	
++
+ 	pte_t entry;
+ 	entry = mk_pte(page, area->vm_page_prot);
+ 
+@@ -241,7 +231,7 @@ static int ssmem_fault(struct vm_area_struct *area, struct vm_fault *vmf)
+ 	inc_mm_counter(area->vm_mm, anon_rss);
+ 	page_cache_release(page);
+ 	page_add_anon_rmap(page, area, v_addr);
+-	
++
+ 
+ 	printk(KERN_DEBUG "v_addr = %lu\n", v_addr);
+ 	printk(KERN_DEBUG "preparing to unlock.\n");
+@@ -392,11 +382,9 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 	 * May need to lock mm?
+ 	 * TODO: Make sure lists are being created correctly.
+ 	 */
+-	
+ 	new_vma = find_vma(current->mm, ret_addr + 1);
+ 	if (new_vma == NULL) {
+ 		printk(KERN_DEBUG "Failed to find VMA.\n");
+-		
+ 		up_write(&current->mm->mmap_sem);
+ 		printk(KERN_DEBUG "Returning unlocked.\n");
+ 		return -ENOMEM;
+@@ -409,7 +397,6 @@ unsigned long mmap_attach(int vma_prot, int vma_flags, size_t size,
+ 		printk(KERN_DEBUG "VM_OPs assigned.\n");
+ 		printk(KERN_DEBUG "length = %lu\n",
+ 				new_vma->vm_end - new_vma->vm_start);
+-		
+ 		up_write(&current->mm->mmap_sem);
+ 		printk(KERN_DEBUG "VMA inserted into list.\n");
+ 		return ret_addr;
+@@ -518,12 +505,10 @@ asmlinkage int ssmem_detach(void *addr)
+ 		 */
+ 		spin_lock(current->mm->page_table_lock);
+ 		/* Removed the current vma from the list. */
+-		printk(KERN_DEBUG "searching (prev) using address: %lu\n", long_addr);
+-		vma_to_remove = find_vma_prev(current->mm, long_addr, &prev_vma);
+-		printk(KERN_DEBUG "returned vma: %p\n", vma_to_remove);
++		vma_to_remove = find_vma_prev(current->mm, long_addr,
++				&prev_vma);
+ 
+ 		if (vma_to_remove != NULL) {
+-			printk("VMA_TO_REMOVE1 = %p\n", vma_to_remove);
+ 			/*
+ 			 * Munmap the memory area.
+ 			 * NOTE: do_munmap does not seem to want to work
+@@ -533,35 +518,11 @@ asmlinkage int ssmem_detach(void *addr)
+ 				printk(KERN_DEBUG "Failed to munmap.\n");
+ 				return_value = -EFAULT;
+ 			}
+-
+-			unmap_vmas is getting a bad page error deep into the call stack
+-			and I'm not really sure why.
+-
+ 			*/
+ 			mm = vma_to_remove->vm_mm;
+ 			start = vma_to_remove->vm_start;
+ 			end = start + mem_segment->length;
+ 
+-			/*
+-			 * Deal with the accounting on the mm_struct.
+-			 * 1. Remove the vma from the rb tree in the mm.
+-			 * 2. Decrement the number of mappers
+-			 * 3. Remove the proper vma from the list.
+-			 * 4. Unmap the area
+-			 * 5. Clear the cache.
+-			 */
+-			/*
+-			rb_erase(&vma_to_remove->vm_rb, &mm->mm_rb);
+-			mm->map_count--;
+-			prev_vma->vm_next = vma_to_remove->vm_next;
+-			vma_to_remove->vm_next = NULL;
+-			mm->unmap_area(mm, long_addr);
+-			mm->mmap_cache = NULL;
+-			*/
+-
+-
+-			//detach_vmas_to_be_unmapped(mm, vma, prev_vma, end);
+-			printk("VMA_TO_REMOVE2 = %p\n", vma_to_remove);
+ 			vma_to_remove->vm_ops->close(vma_to_remove);
+ 
+ 		}
+-- 
+1.7.9.5
+
+
+From 4662c99858c122d3f835e80667b78bb1274c25b8 Mon Sep 17 00:00:00 2001
+From: Karan Uppal <ku2138@columbia.edu>
+Date: Thu, 18 Apr 2013 22:47:55 -0400
+Subject: [PATCH 59/61] cover sheet info added
+
+---
+ cover_sheet.txt |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/cover_sheet.txt b/cover_sheet.txt
+index c832e8a..be7c79d 100644
+--- a/cover_sheet.txt
++++ b/cover_sheet.txt
+@@ -9,7 +9,7 @@ Name and UNI of Group Member 1: Riley Spahn, rbs2152
+    
+ Name and UNI of Group Member 2: Venkata Yamajala, vsy 2104
+ 
+-Name and UNI of Group Member 3: Karran Uppal, ku2138
++Name and UNI of Group Member 3: Karan Uppal, ku2138
+    
+ 
+ We certify that:
+@@ -52,4 +52,6 @@ Member Contributions:
+             * ssmem_fault - assisted with debugging.
+     # Venkata Yamajala
+     # Karran Uppal
++            * ssmem_fault - primary author
++            * ssmem_create - added functionality to support fault handler
+ 
+-- 
+1.7.9.5
+
+
+From 8514c5fcc99b249b08f11a0d95b32bd39c3cc2fd Mon Sep 17 00:00:00 2001
+From: seshu yamajala <syamajala@gmail.com>
+Date: Thu, 18 Apr 2013 22:53:24 -0400
+Subject: [PATCH 60/61] Makefile for ssmempipe
+
+---
+ userspace_tests/Makefile |   47 ++++++++++++++++++++++++----------------------
+ 1 file changed, 25 insertions(+), 22 deletions(-)
+
+diff --git a/userspace_tests/Makefile b/userspace_tests/Makefile
+index 93f5a7a..df56380 100644
+--- a/userspace_tests/Makefile
++++ b/userspace_tests/Makefile
+@@ -1,10 +1,10 @@
+ APP := ssmempipe
+-ROOT:=/opt
++ROOT:=$(HOME)
+ NDK_PLATFORM_VER := 14
+ INSTALL_DIR := /data/tmp
+ 
+-ANDROID_SDK_ROOT:=$(ROOT)/android-sdk
+-ANDROID_NDK_ROOT:=$(ROOT)/android-ndk
++ANDROID_SDK_ROOT:=$(ROOT)/android-sdk-linux
++ANDROID_NDK_ROOT:=$(ROOT)/android-ndk-r8d
+ ANDROID_NDK_HOST:=linux-x86
+ ANDROID_TARGET:=i686-linux-android
+ ANDROID_TARGET_ARCH:=x86
+@@ -14,38 +14,41 @@ BINDIR:=$(ANDROID_NDK_ROOT)/toolchains/$(ANDROID_TOOLCHAIN)/prebuilt/$(ANDROID_N
+ LIBDIR:=$(ANDROID_NDK_ROOT)/platforms/android-$(NDK_PLATFORM_VER)/arch-$(ANDROID_TARGET_ARCH)/usr/lib
+ INCDIR:=$(ANDROID_NDK_ROOT)/platforms/android-$(NDK_PLATFORM_VER)/arch-$(ANDROID_TARGET_ARCH)/usr/include
+ BIN := $(BINDIR)/bin
+- 
++
+ CPP := $(BIN)/$(ANDROID_TARGET)-g++
+ CC := $(BIN)/$(ANDROID_TARGET)-gcc
+ CFLAGS := -I$(INCDIR)
+-LDFLAGS := -Wl,-rpath-link=$(LIBDIR),-dynamic-linker=/system/bin/linker -L$(LIBDIR) 
++LDFLAGS := -Wl,-rpath-link=$(LIBDIR),-dynamic-linker=/system/bin/linker -L$(LIBDIR)
+ LDFLAGS += $(LIBDIR)/crtbegin_dynamic.o $(LIBDIR)/crtend_android.o -nostdlib -lc -disable-multilib -lm
+- 
+- 
+-all: $(APP)
+- 
++
++all: tests
++
+ OBJS += $(APP).o
+- 
+-$(APP): $(OBJS)
+-	$(CC) $(LDFLAGS) -o $@ $^
+- 
+-%.o: %.c
+-	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@ 
++
++#%.o: %.c
++#	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
++
++tests: $(APP)
++
++$(APP): $(APP).c
++	$(CC) -c $(INCLUDE) $(CFLAGS) $(APP).c -o $(APP).o
++	$(CC) $(LDFLAGS) -o $(APP) $(APP).o
++
+ install: $(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP) 
++	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP)
+ 	$(ANDROID_SDK_ROOT)/platform-tools/adb shell chmod 777 $(INSTALL_DIR)/$(APP)
+- 
++
+ shell:
+ 	$(ANDROID_SDK_ROOT)/platform-tools/adb shell
+- 
++
+ run:
+ 	$(ANDROID_SDK_ROOT)/platform-tools/adb shell $(INSTALL_DIR)/$(APP)
+- 
++
+ r: $(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP) 
++	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP)
+ 	$(ANDROID_SDK_ROOT)/platform-tools/adb shell chmod 777 $(INSTALL_DIR)/$(APP)
+ 	$(ANDROID_SDK_ROOT)/platform-tools/adb shell $(INSTALL_DIR)/$(APP)
+- 
++
+ clean:
+-	@rm -f $(APP).o $(APP)
++	@rm -f *.o $(APP)
+ 
+-- 
+1.7.9.5
+
+
+From f0bc58f22fcd37141aec423aff48d41744d24851 Mon Sep 17 00:00:00 2001
+From: Riley Spahn <riley@cs.columbia.edu>
+Date: Thu, 18 Apr 2013 23:05:49 -0400
+Subject: [PATCH 61/61] -removed userspace programs.
+
+---
+ cover_sheet.txt             |   61 ----------------
+ user_tests/Makefile         |   54 --------------
+ user_tests/test.c           |   55 --------------
+ userspace_tests/Makefile    |   54 --------------
+ userspace_tests/ssmempipe.c |  168 -------------------------------------------
+ 5 files changed, 392 deletions(-)
+ delete mode 100644 cover_sheet.txt
+ delete mode 100644 user_tests/Makefile
+ delete mode 100644 user_tests/test.c
+ delete mode 100644 userspace_tests/Makefile
+ delete mode 100644 userspace_tests/ssmempipe.c
+
+diff --git a/cover_sheet.txt b/cover_sheet.txt
+deleted file mode 100644
+index 38ebd54..0000000
+--- a/cover_sheet.txt
++++ /dev/null
+@@ -1,61 +0,0 @@
+-
+-                     W4118 Spring 2013 Programming Assignment
+-
+-Assignment Number: 4
+-
+-Group Number: 16
+-
+-Name and UNI of Group Member 1: Riley Spahn, rbs2152
+-   
+-Name and UNI of Group Member 2: Venkata Yamajala, vsy 2104
+-
+-Name and UNI of Group Member 3: Karan Uppal, ku2138
+-   
+-
+-We certify that:
+-   	   _ Our code compiles and works for all reasonable inputs
+-	   x Our code compiles, but does not work for all inputs
+-	   _ Our code does not compile
+-
+-     * While we may have discussed the assignment with others, the code
+-       submitted is entirely our own group's work and no other student 
+-       has edited it.
+-       -Yes-
+-     * So far as we have been able to determine, the program properly
+-       handles all reasonable inputs.
+-       -We have counts on the pages thar are incorrect which is causing
+-       problems when detaching.
+-
+-   Further instructions to the student: 
+-     * Check your code to make sure it is readable. You may wish to
+-       add some comments, change a variable name, or even restructure the
+-       code. This also often helps you find bugs in the code.
+-     * Include this file with the files you submit for your
+-       programming assignment.  The file should be named  "pg_cover.txt".
+-
+-     * Describe below how each member of your group contributed to the
+-       assignment.  Include a list of C functions and files that you modified
+-       or implemented and which group member was primarily responsible
+-       for doing each.  All group members are expected to contribute in
+-       writing the code for each assignment.
+-       
+-Member Contributions:
+-
+-    # Riley Spahn
+-        * mm/ssmem.c
+-            * ssmem_attach - primary author of attach function.
+-            * clean_up_ssmem_struct
+-            * pages_from_bytes - helper
+-            * ssmem_create - initialization
+-            * init_locks - helper
+-            * ssmem_detach - coauthor
+-            * ssmem_fault - assisted with debugging.
+-
+-    # Venkata Yamajala
+-      	I wrote ssmempipe.c and helped a little with detach. 
+-	
+-    
+-    # Karran Uppal
+-            * ssmem_fault - primary author
+-            * ssmem_create - added functionality to support fault handler
+-
+diff --git a/user_tests/Makefile b/user_tests/Makefile
+deleted file mode 100644
+index 12866c8..0000000
+--- a/user_tests/Makefile
++++ /dev/null
+@@ -1,54 +0,0 @@
+-APP := test
+-ROOT:=$(HOME)
+-NDK_PLATFORM_VER := 14
+-INSTALL_DIR := /data/tmp
+-
+-ANDROID_SDK_ROOT:=$(ROOT)/android-sdk-linux
+-ANDROID_NDK_ROOT:=$(ROOT)/android-ndk-r8d
+-ANDROID_NDK_HOST:=linux-x86
+-ANDROID_TARGET:=i686-linux-android
+-ANDROID_TARGET_ARCH:=x86
+-ANDROID_TOOLCHAIN:=x86-4.4.3
+-
+-BINDIR:=$(ANDROID_NDK_ROOT)/toolchains/$(ANDROID_TOOLCHAIN)/prebuilt/$(ANDROID_NDK_HOST)
+-LIBDIR:=$(ANDROID_NDK_ROOT)/platforms/android-$(NDK_PLATFORM_VER)/arch-$(ANDROID_TARGET_ARCH)/usr/lib
+-INCDIR:=$(ANDROID_NDK_ROOT)/platforms/android-$(NDK_PLATFORM_VER)/arch-$(ANDROID_TARGET_ARCH)/usr/include
+-BIN := $(BINDIR)/bin
+-
+-CPP := $(BIN)/$(ANDROID_TARGET)-g++
+-CC := $(BIN)/$(ANDROID_TARGET)-gcc
+-CFLAGS := -I$(INCDIR)
+-LDFLAGS := -Wl,-rpath-link=$(LIBDIR),-dynamic-linker=/system/bin/linker -L$(LIBDIR)
+-LDFLAGS += $(LIBDIR)/crtbegin_dynamic.o $(LIBDIR)/crtend_android.o -nostdlib -lc -disable-multilib -lm
+-
+-all: tests
+-
+-OBJS += $(APP).o
+-
+-#%.o: %.c
+-#	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+-
+-tests: $(APP)
+-
+-$(APP): $(APP).c
+-	$(CC) -c $(INCLUDE) $(CFLAGS) $(APP).c -o $(APP).o
+-	$(CC) $(LDFLAGS) -o $(APP) $(APP).o
+-
+-install: $(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell chmod 777 $(INSTALL_DIR)/$(APP)
+-
+-shell:
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell
+-
+-run:
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell $(INSTALL_DIR)/$(APP)
+-
+-r: $(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell chmod 777 $(INSTALL_DIR)/$(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell $(INSTALL_DIR)/$(APP)
+-
+-clean:
+-	@rm -f *.o $(APP)
+-
+diff --git a/user_tests/test.c b/user_tests/test.c
+deleted file mode 100644
+index 73c7758..0000000
+--- a/user_tests/test.c
++++ /dev/null
+@@ -1,55 +0,0 @@
+-#include <stdio.h>
+-#include <errno.h>
+-#include <sys/syscall.h>
+-
+-#define __NR_ssmem_attach 333
+-#define __NR_ssmem_detach 334
+-
+-
+-int main() {
+-	void * addr1, *addr2;
+-	int id, size, flags, ret;
+-	id = 3;
+-	size = sizeof(int) * 5;
+-	flags = 0x1 | 0x2 | 0x4;
+-	printf("errno = %d\n", errno);
+-	printf("Getting shared mem. id = %d, flags = %d, size = %d\n", id, flags, size);
+-	addr1 = syscall(__NR_ssmem_attach, id, flags, size);
+-	printf("addr = %p\n", addr1);
+-	printf("errno = %d\n", errno);
+-	printf("=============\n");
+-	addr2 = syscall(__NR_ssmem_attach, id, flags, 2048);
+-	printf("addr = %p\n", addr2);
+-	printf("errno = %d\n", errno);
+-	/*
+-	printf("=====INVALID BELOW========\n");
+-	addr = syscall(__NR_ssmem_attach, id, flags, 0);
+-	printf("addr = %p\n", addr);
+-	printf("errno = %d\n", errno);
+-	*/
+-
+-	int *int1 = (int *)addr1;
+-	int *int2 = (int *)addr2;
+-
+-	printf("int1 addr = %p\n", int1);
+-	printf("int2 addr = %p\n", int2);
+-	printf("int1 = %d\n", *int1);
+-	printf("int2 = %d\n", *int2);
+-	printf("=============Assigning============\n");
+-	int i;
+-	for(i = 0; i < size / sizeof(int); i++){
+-		int2[i] = 5;
+-	}
+-	for(i = 0; i < size / sizeof(int); i++){
+-		printf("int1[%d] = %d\n", i, int1[i]);
+-		printf("int2[%d] = %d\n", i, int2[i]);
+-	}
+-
+-	printf("=====detaching====\n");
+-	ret = syscall(__NR_ssmem_detach, addr1);	
+-	printf("detach 1 = %d\n", ret);
+-	ret = syscall(__NR_ssmem_detach, addr2);
+-	while(1);
+-	printf("detach 2 = %d\n", ret);
+-
+-}
+diff --git a/userspace_tests/Makefile b/userspace_tests/Makefile
+deleted file mode 100644
+index df56380..0000000
+--- a/userspace_tests/Makefile
++++ /dev/null
+@@ -1,54 +0,0 @@
+-APP := ssmempipe
+-ROOT:=$(HOME)
+-NDK_PLATFORM_VER := 14
+-INSTALL_DIR := /data/tmp
+-
+-ANDROID_SDK_ROOT:=$(ROOT)/android-sdk-linux
+-ANDROID_NDK_ROOT:=$(ROOT)/android-ndk-r8d
+-ANDROID_NDK_HOST:=linux-x86
+-ANDROID_TARGET:=i686-linux-android
+-ANDROID_TARGET_ARCH:=x86
+-ANDROID_TOOLCHAIN:=x86-4.4.3
+-
+-BINDIR:=$(ANDROID_NDK_ROOT)/toolchains/$(ANDROID_TOOLCHAIN)/prebuilt/$(ANDROID_NDK_HOST)
+-LIBDIR:=$(ANDROID_NDK_ROOT)/platforms/android-$(NDK_PLATFORM_VER)/arch-$(ANDROID_TARGET_ARCH)/usr/lib
+-INCDIR:=$(ANDROID_NDK_ROOT)/platforms/android-$(NDK_PLATFORM_VER)/arch-$(ANDROID_TARGET_ARCH)/usr/include
+-BIN := $(BINDIR)/bin
+-
+-CPP := $(BIN)/$(ANDROID_TARGET)-g++
+-CC := $(BIN)/$(ANDROID_TARGET)-gcc
+-CFLAGS := -I$(INCDIR)
+-LDFLAGS := -Wl,-rpath-link=$(LIBDIR),-dynamic-linker=/system/bin/linker -L$(LIBDIR)
+-LDFLAGS += $(LIBDIR)/crtbegin_dynamic.o $(LIBDIR)/crtend_android.o -nostdlib -lc -disable-multilib -lm
+-
+-all: tests
+-
+-OBJS += $(APP).o
+-
+-#%.o: %.c
+-#	$(CC) -c $(INCLUDE) $(CFLAGS) $< -o $@
+-
+-tests: $(APP)
+-
+-$(APP): $(APP).c
+-	$(CC) -c $(INCLUDE) $(CFLAGS) $(APP).c -o $(APP).o
+-	$(CC) $(LDFLAGS) -o $(APP) $(APP).o
+-
+-install: $(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell chmod 777 $(INSTALL_DIR)/$(APP)
+-
+-shell:
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell
+-
+-run:
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell $(INSTALL_DIR)/$(APP)
+-
+-r: $(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb push $(APP) $(INSTALL_DIR)/$(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell chmod 777 $(INSTALL_DIR)/$(APP)
+-	$(ANDROID_SDK_ROOT)/platform-tools/adb shell $(INSTALL_DIR)/$(APP)
+-
+-clean:
+-	@rm -f *.o $(APP)
+-
+diff --git a/userspace_tests/ssmempipe.c b/userspace_tests/ssmempipe.c
+deleted file mode 100644
+index 0d8c2a8..0000000
+--- a/userspace_tests/ssmempipe.c
++++ /dev/null
+@@ -1,168 +0,0 @@
+-#include <stdio.h>
+-#include <stdlib.h>
+-#include <unistd.h>
+-#include <sys/syscall.h>
+-#include <string.h>
+-#include <errno.h>
+-#include <signal.h>
+-
+-#define __ssmem_attach 333
+-#define __ssmem_detach 334
+-#define SSMEM_FLAG_CREATE 0x1
+-#define SSMEM_FLAG_WRITE 0x2
+-#define SSMEM_FLAG_EXEC 0x4
+-
+-#define SEG_SIZE 8192
+-#define SLOT_SIZE 1024
+-#define SLOTS SEG_SIZE/SLOT_SIZE
+-
+-struct slot {
+-  int id;
+-  int readers;
+-  int read[8][SLOTS];
+-  int written[SLOTS];
+-};
+-void *detach_address = NULL;
+-
+-void *attach(int id) {
+-  // first try to attach
+-  errno = 0;
+-  void *addr = (void *)syscall(__ssmem_attach, id, SSMEM_FLAG_WRITE, SEG_SIZE);
+-
+-  if (errno == EINVAL) {
+-    printf("Invalid id\n");
+-    exit(-1);
+-  } else if (errno == ENOMEM) {
+-    printf("Memory could not be allocated\n");
+-    exit(-1);
+-  }
+-  // if we can't attach because the segment doesn't exist then try to create it
+-  else if (errno == EADDRNOTAVAIL) {      
+-    addr = (void *)syscall(__ssmem_attach, id, SSMEM_FLAG_CREATE | SSMEM_FLAG_WRITE, SEG_SIZE);
+-    return addr;
+-  }
+-  detach_address = addr;
+-  return addr;
+-}
+-
+-void detach(int sig) {
+-  if (detach_address != NULL) {    
+-    int v = syscall(__ssmem_detach, detach_address);
+-    if (v == EFAULT) {
+-      printf("error detaching\n");
+-      exit(-1);
+-    }
+-  }
+-  exit(0);
+-}
+-
+-int main(int argc, char **argv) 
+-{
+-  
+-  if (argc != 4) {
+-    printf("Usage: ssmpipe <name> <ssmem_id> <type>\n");
+-    return 0;
+-  }
+-
+-  signal(SIGINT, detach);
+-  int name = atoi(argv[1]);  
+-  int id = atoi(argv[2]);
+-  int slot = 0;
+-  void *a = attach(id);
+-  struct slot *start = (struct slot *)a;
+-  struct slot slot0 = *((struct slot *)a);
+-  char *addr = ((char *)a) + SLOT_SIZE;
+-  int i;
+-
+-  if (strncmp(argv[3], "reader", strlen("reader")) == 0) {    
+-    
+-    if (slot0.id != id || slot0.readers == 0) {
+-      slot0.id = id;
+-      slot0.readers = 1;
+-    } else {
+-      slot0.readers++;
+-    }
+-
+-    for(i = 0; i < SLOTS; i++) {
+-      slot0.read[slot0.readers-1][i] = 1;
+-    }
+-
+-    int reader_id = slot0.readers-1;
+-    *start = slot0;
+-
+-
+-    while(1) {
+-    
+-      slot0 = *((struct slot *)start);
+-
+-      if (slot0.written[slot] && !slot0.read[reader_id][slot]) {
+-       	printf("reader%d: %s", reader_id+1, addr);
+-	slot0.read[reader_id][slot] = 1;
+-	*start = slot0;
+-	
+-	if (++slot < SLOTS-1) {
+-	  addr = addr + SLOT_SIZE;
+-	} else {
+-	  slot = 0;
+-	  addr = ((char *)a) + SLOT_SIZE;
+-	}
+-      }
+-    }
+-
+-    return 0;
+-
+-  } else if (strncmp(argv[3], "writer", strlen("writer")) == 0) {
+-    
+-    char *data = (char *)malloc(1024);
+-
+-    if (data == NULL) {
+-      printf("malloc error\n");
+-      exit(-1);
+-    }
+-
+-    if (slot0.id != id) {
+-      slot0.id = id;
+-      slot0.readers = 0;
+-    }
+-
+-    *start = slot0;
+-    int read = 0;
+-
+-    while(1) {
+-      fgets(data, SLOT_SIZE, stdin);
+-
+-      read = 0;
+-      slot0 = *start;
+-
+-      while (read != slot0.readers) {
+-
+-	for (i = 0; i < slot0.readers; i++) {
+-	  read += slot0.read[i][slot];
+-	}
+-
+-	if (read == slot0.readers) {
+-	  memcpy(addr, data, SLOT_SIZE);
+-	  
+-	  slot0.written[slot] = 1;
+-
+-	  for (i = 0; i < slot0.readers; i++) {
+-	    slot0.read[i][slot] = 0;
+-	  }
+-
+-	  *start = slot0;
+-	  
+-	} else {
+-	  read = 0;
+-	  sleep(1);
+-	}
+-      }
+-
+-      if (++slot < SLOTS-1) {	
+-	addr = addr + SLOT_SIZE;
+-      } else {
+-	addr = ((char *)a) + SLOT_SIZE;
+-	slot = 0;	
+-      }
+-    }
+-  }
+-}
+-- 
+1.7.9.5
+
