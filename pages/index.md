@@ -22,8 +22,9 @@ At Auburn I worked under Dr. Xiao Qin and Dr. Orlando Acevedo. Under Dr. Acevedo
 ### Columbia University, Ph.D. Computer Science
 * January 2013 - Present
 * New York, NY
-* Selected Coursework:
-    * [Operating Systems](classes/OperatingSystems.html)
+* [Course Work](ColumbiaCourseWork.html)
+    * [Operating Systems](ColumbiaCourseWork.html)
+    * [Cloud and Mobile Security](ColumbiaCourseWork.html)
 
 ### Auburn University, B.S. Software Engineering
 * August 2008 - May 2012
@@ -31,7 +32,7 @@ At Auburn I worked under Dr. Xiao Qin and Dr. Orlando Acevedo. Under Dr. Acevedo
 * Selected Coursework:
     * Computer Architecture - Designed a MIPS processor using VHDL.
     * Compiler Construction - Implemented a compiler for a C like language for the Parallax Propeller.
-    * Senior Design - Built a framework for molecular dynamics simulation.
+    * [Senior Design](https://github.com/rlyspn/SeniorDesign_COMP4710) - Built a framework for molecular dynamics simulation.
 
 ### Jefferson County International Baccalaureate School, IB Diploma
 * August 2004 - May 2008

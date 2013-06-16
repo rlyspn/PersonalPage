@@ -1,0 +1,7 @@
+Repository for my research webpage
+
+Requires:
+    Pandoc
+
+To deploy:
+    ./deploy.sh
