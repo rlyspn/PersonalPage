@@ -5,7 +5,7 @@
 My name is Riley Spahn.
 I am currently a computer science Ph.D. student at Columbia University working under [Dr. Roxana Geambasu](http://www.cs.columbia.edu/~roxana/) and [Dr. Gail Kaiser](http://www.cs.columbia.edu/~kaiser/). I am broadly interested computer systems but I would like to focus on distributed systems, security and related topics.
 
-## Experience
+## Research Experience
 ### Columbia University, New York, NY (January 2013-Present)
 I am currently working on a project related to fine grained control for securing sensitive data.
 
@@ -16,7 +16,7 @@ I worked in the Cyberspace Science and Information Intelligence Research Group (
 At Auburn I worked under Dr. Xiao Qin and Dr. Orlando Acevedo. Under Dr. Acevedo I built a framework for molecular dynamics simulation framework parallelized using NVIDIA's CUDA architecture. In Dr. Qin's lab I worked on a distributed cryptosystem built on top of Apache Hadoop. I also wrote projects for a future Hadoop based distributed systems class.
 
 ## Publications
-* NV: Nessus vulnerability visualization for the web. Lane Harrison, **Riley Spahn**, Mike Iannacone, Evan Downing and John Goodall.   Ninth International Symposium on Visualization for Cyber Security (VizSec 2012), ACM.
+* [NV: Nessus vulnerability visualization for the web](https://github.com/ornl-sava/nv). Lane Harrison, **Riley Spahn**, Mike Iannacone, Evan Downing and John Goodall.   Ninth International Symposium on Visualization for Cyber Security (VizSec 2012), ACM.
 
 ## Education
 ### Columbia University, Ph.D. Computer Science
