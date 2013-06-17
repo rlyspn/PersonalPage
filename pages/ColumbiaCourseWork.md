@@ -5,7 +5,7 @@
 * [Record System Repository](https://bitbucket.org/rlyspn/androidrr)
 * [Paper](assets/papers/AndroidRR.pdf)
 
-## COMS W4118: [Operating Systems](http://www.cs.columbia.edu/~krj/os/)
+## [COMS W4118: Operating Systems](http://www.cs.columbia.edu/~krj/os/)
 * Shell Project
     * This was a simple project to build a shell.
     * [Source Code](https://github.com/rlyspn/os_shell)
