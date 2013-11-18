@@ -15,6 +15,12 @@ I worked in the Cyberspace Science and Information Intelligence Research Group (
 ### Auburn University, Auburn, AL (February-May 2011, August 2011-May 2012)
 At Auburn I worked under Dr. Xiao Qin and Dr. Orlando Acevedo. Under Dr. Acevedo I built a framework for molecular dynamics simulation framework parallelized using NVIDIA's CUDA architecture. In Dr. Qin's lab I worked on a distributed cryptosystem built on top of Apache Hadoop. I also wrote projects for a future Hadoop based distributed systems class.
 
+## Teaching Experience
+### Head TA, COMS 4156: Advanced Software Engineering (September 2013-Present)
+* Assisted students designing, developing and debugging projects in Java, Ruby And Django.
+* Created and graded assignments.
+* Supervised two other teaching assistants.
+
 ## Publications
 * [NV: Nessus vulnerability visualization for the web](https://github.com/ornl-sava/nv). Lane Harrison, **Riley Spahn**, Mike Iannacone, Evan Downing and John Goodall.   Ninth International Symposium on Visualization for Cyber Security (VizSec 2012), ACM.
 
@@ -30,13 +36,17 @@ At Auburn I worked under Dr. Xiao Qin and Dr. Orlando Acevedo. Under Dr. Acevedo
 * August 2008 - May 2012
 * Auburn, AL
 * Selected Coursework:
-    * Computer Architecture - Designed a MIPS processor using VHDL.
-    * Compiler Construction - Implemented a compiler for a C like language for the Parallax Propeller.
     * [Senior Design](https://github.com/rlyspn/SeniorDesign_COMP4710) - Built a framework for molecular dynamics simulation.
+    * Compiler Construction - Implemented a compiler for a C like language for the Parallax Propeller.
+    * Computer Architecture - Designed a MIPS processor using VHDL.
 
 ### Jefferson County International Baccalaureate School, IB Diploma
 * August 2004 - May 2008
 * Birmingham, AL
+
+## Links
+* [GitHub](http://www.github.com/rlyspn)
+* [BitBucket](http://www.bitbucket.org/rlyspn)
 
 ## Contact
 rbs2152 at columbia dot edu
