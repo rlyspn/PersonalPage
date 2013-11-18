@@ -1,5 +1,2 @@
 # Vim Swap Files
 *.swp
-
-# Output directory
-site/
